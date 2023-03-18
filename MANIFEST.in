@@ -1,0 +1,4 @@
+include reservation_system/schema.sql
+graft reservation_system/static
+graft reservation_system/templates
+global-exclude *.pyc

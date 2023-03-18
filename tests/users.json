@@ -1,0 +1,77 @@
+[
+    {
+        "name": "Jayden Carr",
+        "username": "greenbird946",
+        "password": "glennwei",
+        "email": "jayden.carr@example.com"
+    },
+    {
+        "name": "Lester Dunn",
+        "username": "bigfrog546",
+        "password": "area51",
+        "email": "lester.dunn@example.com",
+        "level": 2
+    },
+    {
+        "name": "Cecil Mcdonalid",
+        "username": "smallleopard514",
+        "password": "spike",
+        "email": "cecil.mcdonalid@example.com",
+        "level": 0
+    },
+    {
+        "name": "Victor Hanson",
+        "username": "blackelephant797",
+        "password": "bond007",
+        "email": "victor.hanson@example.com"
+    },
+    {
+        "name": "Lynn Ellis",
+        "username": "orangemouse546",
+        "password": "massive",
+        "email": "lynn.ellis@example.com",
+        "level": 1
+    },
+    {
+        "name": "Neil Burns",
+        "username": "angrycat109",
+        "password": "xxx123",
+        "email": "neil.burns@example.com",
+        "level": 3
+    },
+    {
+        "name": "Alexa Hanson",
+        "username": "crazytiger569",
+        "password": "dinosaur",
+        "email": "alexa.hanson@example.com",
+        "level": 2
+    },
+    {
+        "name": "Tina Wheeler",
+        "username": "happysnake435",
+        "password": "cutter",
+        "email": "tina.wheeler@example.com",
+        "level": 1
+    },
+    {
+        "name": "Gina Warren",
+        "username": "tinymouse305",
+        "password": "bigmike",
+        "email": "gina.warren@example.com",
+        "level": 0
+    },
+    {
+        "name": "Andre Sims",
+        "username": "goldenmeercat421",
+        "password": "archer",
+        "email": "andre.sims@example.com",
+        "level": 1
+    },
+    {
+        "name": "Ava Hunt",
+        "username": "beautifuldog443",
+        "password": "cubs",
+        "email": "ava.hunt@example.com",
+        "level": 0
+    }
+]
