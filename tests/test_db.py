@@ -1,11 +1,10 @@
 import os, json
-import pandas as pd
 
-import pytest
-from reservation_system.db import insert_users, get_user
+from werkzeug.security import generate_password_hash
+from reservation_system import db
 
-with open(os.path.join(os.path.dirname(__file__), 'users.json')) as f:
-    users = json.load(f)
+
+from conftest import users, periods
 
 def test_init_db_command(runner, monkeypatch):
     class Recorder(object):
@@ -19,29 +18,23 @@ def test_init_db_command(runner, monkeypatch):
     assert 'Initialized' in result.output
     assert Recorder.called
 
-def test_insert_users(app):
+def test_get_users(app):
     with app.app_context():
-        insert_users([{'username': 'a', 'password': 'a'}])
+        username_set = lambda users: set([e['username'] for e in users])
+        assert username_set(users) == username_set(db.select('users'))
+        _username_set = lambda users, level: set([e['username'] for e in users if ('level' not in e and level==0) or ('level' in e and e['level']==level)])
+        for i in range(4):
+            assert _username_set(users, i) == username_set(db.select('users', where={'level': i}))
 
-def test_get_user(app):
+def test_remove_users(app):
     with app.app_context():
-        for i, user in enumerate(users):
-            _user = get_user(user['username'])
-            if 'level' not in user:
-                _user.pop('level')
-            assert _user == users[i]
+        db.delete('users', where={'username': 'test'})
 
-# def test_get_users(app):
-#     with app.app_context():
-#         insert_users(users)
-#         def get_df(users):
-#             res = {'level': []}
-#             for user in users:
-#                 if 'level' not in user: res['level'].append(None)
-#                 for key, value in user.items():
-#                     if key not in res: res[key] = [value]
-#                     else: res[key].append(value)
-#             return pd.DataFrame(res)
-#         users_df = get_df(users)
-#         assert set(users_df['username']) == set(get_df(get_users())['username'])
-#         assert set(users_df[users_df['level']==1]['username']) == set(get_df(get_users(where={'level': 1}))['username'])
+def test_get_periods(app):
+    with app.app_context():
+        period_set = lambda periods: set([e['period_id'] if 'period_id' in e else i+1 for i, e in enumerate(periods)])
+        assert period_set(periods) == period_set(db.select('periods'))
+
+def test_remove_periods(app):
+    with app.app_context():
+        db.delete('periods', where={'period_id': 1})
