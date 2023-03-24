@@ -1,0 +1,10 @@
+[
+    {
+        "type": 1,
+        "label": "Computer Lab"
+    },
+    {
+        "type": 2,
+        "label":"Meeting Room"
+    }
+]

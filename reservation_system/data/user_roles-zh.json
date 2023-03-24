@@ -1,0 +1,25 @@
+[
+    {
+        "role": "0",
+        "lang_code": "zh",
+        "label": "待审核",
+        "Description": "每个操作都需要审核"
+    },
+    {
+        "role": "1",
+        "lang_code": "zh",
+        "label": "基础",
+        "Description": "基本操作不需要审核"
+    },
+    {
+        "role": "2",
+        "lang_code": "zh",
+        "label": "高级",
+        "Description": "高级操作不需要审核"
+    },
+    {
+        "role": "3",
+        "lang_code": "zh",
+        "label": "管理"
+    }
+]

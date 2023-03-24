@@ -1,0 +1,21 @@
+[
+    {
+        "role": 0,
+        "label": "Restricted",
+        "Description": "All reservations should be reviewed"
+    },
+    {
+        "role": 1,
+        "label": "Basic",
+        "Description": "Basic reservations are automated"
+    },
+    {
+        "role": 2,
+        "label": "Advanced",
+        "Description": "Advanced reservations are automated"
+    },
+    {
+        "role": 3,
+        "label": "Administrator"
+    }
+]

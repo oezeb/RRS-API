@@ -1,0 +1,18 @@
+[
+    {
+        "status": 0,
+        "label": "Pending"
+    },
+    {
+        "status": 1,
+        "label": "Confirmed"
+    },
+    {
+        "status": 2,
+        "label": "Cancelled"
+    },
+    {
+        "status": 3,
+        "label": "Rejected"
+    }
+]

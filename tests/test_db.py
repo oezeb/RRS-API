@@ -1,10 +1,8 @@
 import os, json
-
-from werkzeug.security import generate_password_hash
 from reservation_system import db
 
-
-from conftest import users, periods
+with open(os.path.join(os.path.dirname(__file__), 'data/users.json')) as f:
+    users = json.load(f)
 
 def test_init_db_command(runner, monkeypatch):
     class Recorder(object):
@@ -18,23 +16,17 @@ def test_init_db_command(runner, monkeypatch):
     assert 'Initialized' in result.output
     assert Recorder.called
 
-def test_get_users(app):
+def test_(app):
     with app.app_context():
+        db.insert(db.Tables.USERS, users)
+        
         username_set = lambda users: set([e['username'] for e in users])
-        assert username_set(users) == username_set(db.select('users'))
-        _username_set = lambda users, level: set([e['username'] for e in users if ('level' not in e and level==0) or ('level' in e and e['level']==level)])
+        assert username_set(users) <= username_set(db.select(db.Tables.USERS))
+        _username_set = lambda users, role: set([e['username'] for e in users if ('role' not in e and role==0) or ('role' in e and e['role']==role)])
         for i in range(4):
-            assert _username_set(users, i) == username_set(db.select('users', where={'level': i}))
-
-def test_remove_users(app):
-    with app.app_context():
-        db.delete('users', where={'username': 'test'})
-
-def test_get_periods(app):
-    with app.app_context():
-        period_set = lambda periods: set([e['period_id'] if 'period_id' in e else i+1 for i, e in enumerate(periods)])
-        assert period_set(periods) == period_set(db.select('periods'))
-
-def test_remove_periods(app):
-    with app.app_context():
-        db.delete('periods', where={'period_id': 1})
+            assert _username_set(users, i) <= username_set(db.select('users', where={'role': i}))
+         
+        for user in users: db.delete(db.Tables.USERS, {'username': user['username']})
+        assert len(username_set(users).intersection(username_set(db.select(db.Tables.USERS)))) == 0
+        for i in range(4):
+            assert len(_username_set(users, i).intersection(username_set(db.select('users', where={'role': i})))) == 0

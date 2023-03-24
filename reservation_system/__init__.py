@@ -1,8 +1,5 @@
 import os
-import logging
-import jwt
-
-from flask import Flask, current_app, g, request, abort, session
+from flask import Flask
 from flask_restful import Api
 
 def create_app(test_config=None):
@@ -19,11 +16,9 @@ def create_app(test_config=None):
     try: os.makedirs(app.instance_path)
     except OSError: pass
 
-    from . import db
+    from . import db, api, auth
     db.init_app(app)
-
-    from . import api
     api.init_api(flask_api)
-    app.before_request(api.decode_user_cookie)
+    auth.init_auth(flask_api)
     
     return app

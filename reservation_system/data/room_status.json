@@ -1,0 +1,13 @@
+[
+    
+    {
+        "status": 0,
+        "label": "Unavailable",
+        "description": "Unavailable for booking"
+    },
+    {
+        "status": 1,
+        "label": "Available",
+        "description": "Available for booking"
+    }
+]
