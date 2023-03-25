@@ -11,8 +11,9 @@ from mysql.connector import Error, errorcode
 from reservation_system import db
 
 def init_auth(api):
-    api.add_resource(                Login, '/auth/login'           )
-    api.add_resource(             Register, '/auth/register'        )
+    api.add_resource(          Login, '/login'           )
+    api.add_resource(       Register, '/register'        )
+    api.add_resource( ChangePassword, '/change_password' )
 
 class Login(Resource):
     def post(self):
@@ -41,7 +42,7 @@ class Login(Resource):
             }
         }
         token = jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm='HS256')
-        return {'token': token.decode('UTF-8')}
+        return {'token': token}
     
 class Register(Resource):
     def post(self):
@@ -52,7 +53,10 @@ class Register(Resource):
         `email` is optional.
         """
         data = request.json
-        data['role'] = 0 # New users are restricted by default
+        if 'role' in data and data['role'] != 0:
+            abort(403, message='New users are restricted by default')
+        data['role'] = 0
+        data['password'] = generate_password_hash(data['password'])
 
         cnx = db.get_cnx()
         cursor = cnx.cursor(dictionary=True)
@@ -60,16 +64,9 @@ class Register(Resource):
         try:
             cursor.execute(f"""
                 INSERT INTO {db.USERS}
-                (username, password, role, name, email)
-                VALUES
-                (%s, %s, %s, %s, %s)
-            """, (
-                data['username'],
-                generate_password_hash(data['password']),
-                data['role'],
-                data['name'],
-                data.get('email', None)
-            ))
+                ({', '.join(data.keys())})
+                VALUES ({', '.join(['%s'] * len(data))})
+            """, (*data.values(),))
             cnx.commit()
         except Error as err:
             if err.errno == errorcode.ER_DUP_ENTRY:
@@ -78,6 +75,47 @@ class Register(Resource):
                 abort(500, message='Database error')
         finally:
             cursor.close()
+        
+        return {'message': 'User created successfully'}, 201
+
+class ChangePassword(Resource):
+    def post(self):
+        """
+        Change password.
+        User should be logged in(have a valid auth token)
+        Data should include `password`, `new_password`.
+        """
+        sub = auth()
+        username = sub['username']
+        password = request.json['password']
+        new_password = request.json['new_password']
+
+        cnx = db.get_cnx()
+        cursor = cnx.cursor(dictionary=True)
+
+        cursor.execute(f"""
+            SELECT password
+            FROM {db.USERS}
+            WHERE username = '{username}'
+        """)
+        user = cursor.fetchone()
+
+        if not user or not check_password_hash(user['password'], password):
+            abort(401, message='Invalid username or password')
+
+        try:
+            cursor.execute(f"""
+                UPDATE {db.USERS}
+                SET password = '{generate_password_hash(new_password)}'
+                WHERE username = '{username}'
+            """)
+            cnx.commit()
+        except Error as err:
+            abort(500, message='Database error')
+        finally:
+            cursor.close()
+
+        return {'message': 'Password changed successfully'}, 201
 
 def auth():
     auth_header = request.headers.get('Authorization')
@@ -91,10 +129,11 @@ def auth():
         abort(401, message='Token is expired')
     except jwt.InvalidTokenError:
         abort(401, message='Token is invalid')
+    except Exception as e:
+        logging.error(e)
+        abort(500, message='Internal server error')
 
     return payload['sub']
-
-
 
 def auth_required(func):
     @wraps(func)
@@ -113,9 +152,8 @@ def auth_required(func):
             '/resv_status', 
             '/resv_secu_levels', 
             '/room_status',
-        )):
-            if request.method in ('POST', 'PATCH', 'DELETE'):
-                abort(403, message="Access denied")
+        )) and request.method in ('POST', 'PATCH', 'DELETE'):
+            abort(403, message="Access denied")
             
         # Admin only
         elif request.path.endswith((
@@ -131,39 +169,35 @@ def auth_required(func):
             '/sessions',
             '/periods',
             '/resv_windows',
-        )):
-            if request.method in ('POST', 'PATCH', 'DELETE'):
-                if role < 3:
-                    abort(403, message="Access denied")
+        )) and role < 3 and request.method in ('POST', 'PATCH', 'DELETE'):
+            abort(403, message="Access denied")
 
         elif request.path.endswith((
             '/resv_trans',
             '/user_trans',
-        )):
+        )) and role < 3: # Non-admins can only edit their own
             if request.method == 'POST':
-                if role < 3:
-                    for data in request.json:
-                        if data['username'] != username:
-                            abort(401)
+                for data in request.json:
+                    if data['username'] != username:
+                        abort(403)
             elif request.method == 'PATCH':
-                if role < 3:
-                    if request.json['where']['username'] != username or 'username' in request.json['data']:
-                        abort(401)
+                if request.json['where']['username'] != username or 'username' in request.json['data']:
+                    abort(403)
             elif request.method == 'DELETE':
-                if role < 3 and request.json['username'] != username:
-                        abort(401)
+                if request.json['username'] != username:
+                        abort(403)
 
         # elif table == db.USERS:
-        elif request.path.endswith('/users'):
-            if request.method == 'POST': # Admin only can create users, Others should go through `/auth/register`
-                    abort(401)
-            elif request.method == 'PATCH': # Not Admin, can only edit their own but not their username or role
-                if role < 3:
-                    if request.json['where']['username'] != username or 'username' in request.json['data'] or 'role' in request.json['data']:
-                        abort(401)
-            elif request.method == 'DELETE': # Admin only can delete users
-                if role < 3:
-                    abort(401)
+        elif request.path.endswith('/users') and role < 3:
+            # Admin only can create users, Others should go through `/register`
+            # Admin only can delete users
+            if request.method in ('POST', 'DELETE'): 
+                abort(403)
+            elif request.method == 'PATCH': 
+                # Not Admin, can only edit their own but not their username, role or password.
+                # password can be changed through `/change_password`
+                if request.json['where']['username'] != username or 'password' in request.json['data'] or 'username' in request.json['data'] or 'role' in request.json['data']:
+                    abort(403)
             
         elif request.path.endswith('/reservations'):
             if request.method == 'POST':

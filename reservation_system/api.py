@@ -5,6 +5,7 @@ from flask_restful import Resource, request, abort, wraps
 
 from reservation_system import db
 from reservation_system.auth import auth_required
+from werkzeug.security import generate_password_hash
 
 def init_api(api):
     api.add_resource(           Resv_trans, '/resv_trans'           )
@@ -30,7 +31,6 @@ def init_api(api):
     api.add_resource(              Periods, '/periods'              )
     api.add_resource(         Resv_windows, '/resv_windows'         )
 
-
 class Base(Resource):
     table: str
     def get(self):
@@ -47,6 +47,23 @@ class Base(Resource):
     @auth_required
     def delete(self):
         return db.delete(self.table, where=request.json), 204
+
+class Users(Base): 
+    table = db.USERS
+    @auth_required
+    def post(self):
+        data_list = request.json
+        for data in data_list:
+            if 'password' in data:
+                data['password'] = generate_password_hash(data['password'])
+        return db.insert(self.table, data_list=data_list), 201
+    
+    @auth_required
+    def patch(self):
+        data = request.json['data']
+        if 'password' in data:
+            data['password'] = generate_password_hash(data['password'])
+        return db.update(self.table, data=data, where=request.json['where']), 200
 
 class            Resv_trans(Base): table = db.RESV_TRANS
 class     Resv_status_trans(Base): table = db.RESV_STATUS_TRANS
@@ -66,7 +83,6 @@ class                 Rooms(Base): table = db.ROOMS
 class            Room_types(Base): table = db.ROOM_TYPES
 class           Room_status(Base): table = db.ROOM_STATUS
 class              Sessions(Base): table = db.SESSIONS
-class                 Users(Base): table = db.USERS
 class            User_roles(Base): table = db.USER_ROLES
 class               Periods(Base): table = db.PERIODS
 class          Resv_windows(Base): table = db.RESV_WINDOWS

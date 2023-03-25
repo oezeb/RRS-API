@@ -65,15 +65,16 @@ def init_db():
                 cursor.execute(statement)
 
     for filename, table in (
-        ( 'resv_windows.json', RESV_WINDOWS   ),
-        (      'periods.json', PERIODS        ),
-        (     'sessions.json', SESSIONS       ),
-        (    'languages.json', LANGUAGES      ),
-        (   'room_types.json', ROOM_TYPES     ),
-        (  'room_status.json', ROOM_STATUS    ),
-        (        'rooms.json', ROOMS          ),
-        (   'user_roles.json', USER_ROLES     ),
-        ('user_roles-zh.json', USER_ROLE_TRANS),
+        (    'resv_windows.json', RESV_WINDOWS    ),
+        (         'periods.json', PERIODS         ),
+        (      'user_roles.json', USER_ROLES      ),
+        (        'sessions.json', SESSIONS        ),
+        (     'room_status.json', ROOM_STATUS     ),
+        (      'room_types.json', ROOM_TYPES      ),
+        (           'rooms.json', ROOMS           ),
+        ('resv_secu_levels.json', RESV_SECU_LEVELS),
+        (       'languages.json', LANGUAGES       ),
+        (   'user_roles-zh.json', USER_ROLE_TRANS ),
     ):
         with current_app.open_resource(f'data/{filename}', 'r') as f:
             insert(table, data_list=json.load(f))
@@ -92,6 +93,7 @@ def init_db_command():
 # ----------------------------------------------------------------
 
 def select(table, where: dict=None):
+    print(where)
     cursor = get_cursor()
     if where is not None and where != {}:
         cursor.execute(f"""
@@ -112,13 +114,17 @@ def select(table, where: dict=None):
     return data_list
 
 def insert(table, data_list):
+    """If a table has auto increment primary key, it will return the last inserted ids"""
     cnx = get_cnx(); cursor = cnx.cursor()
+    last_ids = []
     for data in data_list:
         cursor.execute(f"""
             INSERT INTO {table} ({', '.join(data.keys())}) 
             VALUES ({', '.join(['%s']*len(data))});
         """, (*data.values(),))
+        last_ids.append(cursor.lastrowid)
     cnx.commit(); cursor.close()
+    return last_ids
 
 def delete(table, where=None):
     cnx = get_cnx(); cursor = cnx.cursor()
@@ -139,7 +145,7 @@ def update(table, data, where=None):
         """, (*data.values(), *where.values(),))
     else:
         cursor.execute(f"""
-            UPDATE {table} SET {', '.join([f'{key} = %s' for key in data['values']])};
+            UPDATE {table} SET {', '.join([f'{key} = %s' for key in data])};
         """, (*data.values(),))
     cnx.commit(); cursor.close()
 

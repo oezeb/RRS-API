@@ -88,7 +88,7 @@ create table sessions
 /*==============================================================*/
 create table room_status 
 (
-   status               integer auto_increment         not null,
+   status               integer                        not null,
    label                varchar(50)                    not null,
    description          varchar(200)                   null,
    primary key (status)
@@ -127,7 +127,7 @@ create table rooms
 );
 
 /*==============================================================*/
-/* Table: resv_secu_levels                                           */
+/* Table: resv_secu_levels                                      */
 /*==============================================================*/
 create table resv_secu_levels 
 (
@@ -184,7 +184,7 @@ create index idx_resv_id ON reservations (resv_id);
 alter table reservations modify column resv_id integer auto_increment;
 
 /*==============================================================*/
-/* Table: time_slots                                             */
+/* Table: time_slots                                            */
 /*==============================================================*/
 create table time_slots 
 (

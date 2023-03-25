@@ -1,9 +1,6 @@
 import os, json
 from reservation_system import db
 
-with open(os.path.join(os.path.dirname(__file__), 'data/users.json')) as f:
-    users = json.load(f)
-
 def test_init_db_command(runner, monkeypatch):
     class Recorder(object):
         called = False
@@ -16,17 +13,44 @@ def test_init_db_command(runner, monkeypatch):
     assert 'Initialized' in result.output
     assert Recorder.called
 
-def test_(app):
+def test_select(app):
     with app.app_context():
-        db.insert(db.Tables.USERS, users)
-        
-        username_set = lambda users: set([e['username'] for e in users])
-        assert username_set(users) <= username_set(db.select(db.Tables.USERS))
-        _username_set = lambda users, role: set([e['username'] for e in users if ('role' not in e and role==0) or ('role' in e and e['role']==role)])
-        for i in range(4):
-            assert _username_set(users, i) <= username_set(db.select('users', where={'role': i}))
-         
-        for user in users: db.delete(db.Tables.USERS, {'username': user['username']})
-        assert len(username_set(users).intersection(username_set(db.select(db.Tables.USERS)))) == 0
-        for i in range(4):
-            assert len(_username_set(users, i).intersection(username_set(db.select('users', where={'role': i})))) == 0
+        zh = db.select(db.LANGUAGES, where={'lang_code': 'zh'})
+        assert len(zh) == 1 and zh[0]['name'] == '中文'
+        assert len(db.select(db.PERIODS)) == 11
+        assert len(db.select(db.SESSIONS)) == 2
+
+def test_insert(app):
+    with app.app_context():
+        db.insert(db.SESSION_TRANS, data_list=[{
+            'session_id': 1, # 2022 Fall Semester
+            'lang_code': 'zh',
+            'name': '2022年秋學期'
+        }])
+        zh = db.select(db.SESSION_TRANS, where={'session_id': 1, 'lang_code': 'zh'})
+        assert len(zh) == 1 and zh[0]['name'] == '2022年秋學期'
+        last_ids = db.insert(db.ROOM_TYPES, data_list=[{
+            'label': 'Fake Room Type',
+        }])
+        assert len(last_ids) == 1
+        types = db.select(db.ROOM_TYPES, where={'type': last_ids[0]})
+        assert len(types) == 1 and types[0]['label'] == 'Fake Room Type'
+
+def test_delete(app):
+    with app.app_context():
+        db.delete(db.SESSIONS, where={'session_id': 1})
+        ss = db.select(db.SESSIONS, where={'session_id': 1})
+        assert len(ss) == 0
+        db.delete(db.USERS)
+        users = db.select(db.USERS)
+        assert len(users) == 0
+
+
+def test_update(app):
+    with app.app_context():
+        db.update(db.ROOMS, data={'name': 'Fake Room'})
+        rooms = db.select(db.ROOMS)
+        assert set([room['name'] for room in rooms]) == {'Fake Room'}
+        db.update(db.USERS, data={'name': 'Admin'}, where={'username': 'admin'})
+        admin = db.select(db.USERS, where={'username': 'admin'})
+        assert len(admin) == 1 and admin[0]['name'] == 'Admin'
