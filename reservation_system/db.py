@@ -143,4 +143,3 @@ def update(table, data, where=None):
         """, (*data.values(),))
     cnx.commit(); cursor.close()
 
-    
