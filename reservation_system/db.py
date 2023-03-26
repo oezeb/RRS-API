@@ -14,6 +14,7 @@ ROOM_STATUS_TRANS     = "room_status_trans"
 SESSION_TRANS         = "session_trans"
 USER_TRANS            = "user_trans"
 USER_ROLE_TRANS       = "user_role_trans"
+SETTING_TRANS         = "setting_trans"
 LANGUAGES             = "languages"
 TIME_SLOTS            = "time_slots"
 RESERVATIONS          = "reservations"
@@ -26,7 +27,7 @@ SESSIONS              = "sessions"
 USERS                 = "users"
 USER_ROLES            = "user_roles"
 PERIODS               = "periods"
-RESV_WINDOWS          = "resv_windows"
+SETTINGS              = "settings"
 
 def init_app(app):
     app.teardown_appcontext(close_cnx)
@@ -65,13 +66,14 @@ def init_db():
                 cursor.execute(statement)
 
     for filename, table in (
-        (    'resv_windows.json', RESV_WINDOWS    ),
+        (        'settings.json', SETTINGS        ),
         (         'periods.json', PERIODS         ),
         (      'user_roles.json', USER_ROLES      ),
         (        'sessions.json', SESSIONS        ),
         (     'room_status.json', ROOM_STATUS     ),
         (      'room_types.json', ROOM_TYPES      ),
         (           'rooms.json', ROOMS           ),
+        (     'resv_status.json', RESV_STATUS     ),
         ('resv_secu_levels.json', RESV_SECU_LEVELS),
         (       'languages.json', LANGUAGES       ),
         (   'user_roles-zh.json', USER_ROLE_TRANS ),

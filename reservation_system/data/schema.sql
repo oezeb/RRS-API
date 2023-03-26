@@ -7,6 +7,7 @@ drop table if exists room_status_trans;
 drop table if exists session_trans;
 drop table if exists user_trans;
 drop table if exists user_role_trans;
+drop table if exists setting_trans;
 drop table if exists languages;
 drop table if exists time_slots;
 drop table if exists reservations;
@@ -19,17 +20,17 @@ drop table if exists sessions;
 drop table if exists users;
 drop table if exists user_roles;
 drop table if exists periods;
-drop table if exists resv_windows;
+drop table if exists settings;
 
 /*==============================================================*/
-/* Table: resv_windows                                          */
+/* Table: settings                                              */
 /*==============================================================*/
-create table resv_windows 
+create table settings 
 (
-   window_id            integer auto_increment         not null,
-   time_window          time                           not null,
-   is_current           bit                            not null,
-   primary key (window_id)
+   id                   integer auto_increment         not null,
+   name                 varchar(255)                   not null,
+   value                varchar(255)                   not null,
+   primary key (id)
 );
 
 /*==============================================================*/
@@ -142,7 +143,7 @@ create table resv_secu_levels
 /*==============================================================*/
 create table resv_status 
 (
-   status               integer auto_increment         not null,
+   status               integer                        not null,
    label                varchar(50)                    not null,
    description          varchar(200)                   null,
    primary key (status)
@@ -209,6 +210,23 @@ create table languages
    lang_code            varchar(35)                    not null,
    name                 varchar(50)                    not null,
    primary key (lang_code)
+);
+
+/*==============================================================*/
+/* Table: setting_trans                                         */
+/*==============================================================*/
+create table setting_trans 
+(
+   lang_code            varchar(35)                    not null,
+   id                   integer                        not null,
+   name                 varchar(255)                   not null,
+   primary key (lang_code, id),
+   foreign key (lang_code)
+      references languages (lang_code)
+      on update cascade on delete cascade,
+   foreign key (id)
+      references settings (id)
+      on update cascade on delete cascade
 );
 
 /*==============================================================*/
