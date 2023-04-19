@@ -1,389 +1,441 @@
-drop table if exists resv_trans;
-drop table if exists resv_status_trans;
-drop table if exists resv_secu_level_trans;
-drop table if exists room_trans;
-drop table if exists room_type_trans;
-drop table if exists room_status_trans;
-drop table if exists session_trans;
-drop table if exists user_trans;
-drop table if exists user_role_trans;
-drop table if exists setting_trans;
-drop table if exists languages;
-drop table if exists time_slots;
-drop table if exists reservations;
-drop table if exists resv_status;
-drop table if exists resv_secu_levels;
-drop table if exists rooms;
-drop table if exists room_types;
-drop table if exists room_status;
-drop table if exists sessions;
-drop table if exists users;
-drop table if exists user_roles;
-drop table if exists periods;
-drop table if exists settings;
+DROP TABLE IF EXISTS            resv_trans;
+DROP TABLE IF EXISTS     resv_status_trans;
+DROP TABLE IF EXISTS resv_secu_level_trans;
+DROP TABLE IF EXISTS            room_trans;
+DROP TABLE IF EXISTS       room_type_trans;
+DROP TABLE IF EXISTS     room_status_trans;
+DROP TABLE IF EXISTS         session_trans;
+DROP TABLE IF EXISTS          notice_trans;
+DROP TABLE IF EXISTS            user_trans;
+DROP TABLE IF EXISTS       user_role_trans;
+DROP TABLE IF EXISTS         setting_trans;
+DROP TABLE IF EXISTS             languages;
+DROP TABLE IF EXISTS            time_slots;
+DROP TABLE IF EXISTS          reservations;
+DROP TABLE IF EXISTS           resv_status;
+DROP TABLE IF EXISTS      resv_secu_levels;
+DROP TABLE IF EXISTS                 rooms;
+DROP TABLE IF EXISTS            room_types;
+DROP TABLE IF EXISTS           room_status;
+DROP TABLE IF EXISTS              sessions;
+DROP TABLE IF EXISTS               notices;
+DROP TABLE IF EXISTS                 users;
+DROP TABLE IF EXISTS            user_roles;
+DROP TABLE IF EXISTS               periods;
+DROP TABLE IF EXISTS              settings;
 
 /*==============================================================*/
 /* Table: settings                                              */
 /*==============================================================*/
-create table settings 
+CREATE TABLE settings
 (
-   id                   integer auto_increment         not null,
-   name                 varchar(255)                   not null,
-   value                varchar(255)                   not null,
-   primary key (id)
+   
+   id                   INTEGER                        NOT NULL,
+   value                VARCHAR(255)                   NOT NULL,
+   label                VARCHAR(50)                    NOT NULL,
+   description          VARCHAR(200)                   NULL,
+   PRIMARY KEY (id)
 );
 
 /*==============================================================*/
 /* Table: periods                                               */
 /*==============================================================*/
-create table periods 
+CREATE TABLE periods 
 (
-   period_id            integer auto_increment         not null,
-   start_time           time                           not null,
-   end_time             time                           not null,
-   primary key (period_id)
+   period_id            INTEGER AUTO_INCREMENT         NOT NULL,
+   start_time           TIME                           NOT NULL,
+   end_time             TIME                           NOT NULL,
+   PRIMARY KEY (period_id),
+   CHECK (start_time < end_time)
 );
 
 /*==============================================================*/
 /* Table: user_roles                                            */
 /*==============================================================*/
-create table user_roles 
+CREATE TABLE user_roles 
 (
-   role                 integer                        not null,
-   label                varchar(50)                    not null,
-   description          varchar(200)                   null,
-   primary key (role)
+   role                 INTEGER                        NOT NULL,
+   label                VARCHAR(50)                    NOT NULL,
+   description          VARCHAR(200)                   NULL,
+   PRIMARY KEY (role)
 );
 
 /*==============================================================*/
 /* Table: users                                                 */
 /*==============================================================*/
-create table users 
+CREATE TABLE users 
 (
-   username             varchar(50)                    not null,
-   role                 integer                        not null,
-   password             varchar(1024)                  not null,
-   name                 varchar(50)                    null,
-   email                varchar(50)                    null,
-   primary key (username),
-   foreign key (role) 
-      references user_roles (role) 
-      on update cascade on delete cascade
+   username             VARCHAR(50)                    NOT NULL CHECK (username <> ''),
+   name                 VARCHAR(50)                    NOT NULL CHECK (name <> ''),
+   password             VARCHAR(1024)                  NOT NULL,
+   role                 INTEGER                        NOT NULL,
+   email                VARCHAR(50)                    NULL,
+   PRIMARY KEY (username),
+   FOREIGN KEY (role) 
+      REFERENCES user_roles (role) 
+      ON UPDATE CASCADE ON DELETE CASCADE
 );
+
+/*==============================================================*/
+/* Table: notices                                               */
+/*==============================================================*/
+CREATE TABLE notices 
+(
+   username             VARCHAR(50)                    NOT NULL,
+   notice_id            INTEGER                        NOT NULL,
+   title                VARCHAR(100)                   NOT NULL,
+   content              TEXT                           NOT NULL,
+   create_time          TIMESTAMP                      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   update_time          TIMESTAMP                      NULL ON UPDATE CURRENT_TIMESTAMP,
+   PRIMARY KEY (username, notice_id),
+   FOREIGN KEY (username) 
+      REFERENCES users (username)
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   CHECK (create_time <= update_time)
+);
+/* Make notice_id auto increment */
+CREATE INDEX idx_notice_id ON notices (notice_id);
+ALTER TABLE notices MODIFY COLUMN notice_id INTEGER AUTO_INCREMENT;
 
 /*==============================================================*/
 /* Table: sessions                                              */
 /*==============================================================*/
-create table sessions 
+CREATE TABLE sessions 
 (
-   session_id           integer auto_increment         not null,
-   name                 varchar(50)                    not null,
-   start_time           timestamp                      not null,
-   end_time             timestamp                      not null,
-   is_current           bit                       null,
-   primary key (session_id)
+   session_id           INTEGER AUTO_INCREMENT         NOT NULL,
+   name                 VARCHAR(50)                    NOT NULL,
+   start_time           TIMESTAMP                      NOT NULL,
+   end_time             TIMESTAMP                      NOT NULL,
+   is_current           BIT                            NULL,
+   PRIMARY KEY (session_id),
+   CHECK (start_time < end_time)
 );
 
 /*==============================================================*/
 /* Table: room_status                                           */
 /*==============================================================*/
-create table room_status 
+CREATE TABLE room_status 
 (
-   status               integer                        not null,
-   label                varchar(50)                    not null,
-   description          varchar(200)                   null,
-   primary key (status)
+   status               INTEGER                        NOT NULL,
+   label                VARCHAR(50)                    NOT NULL,
+   description          VARCHAR(200)                   NULL,
+   PRIMARY KEY (status)
 );
 
 /*==============================================================*/
 /* Table: room_types                                            */
 /*==============================================================*/
-create table room_types 
+CREATE TABLE room_types 
 (
-   type                 integer auto_increment         not null,
-   label                varchar(50)                    not null,
-   description          varchar(200)                   null,
-   primary key (type)
+   type                 INTEGER AUTO_INCREMENT         NOT NULL,
+   label                VARCHAR(50)                    NOT NULL,
+   description          VARCHAR(200)                   NULL,
+   PRIMARY KEY (type)
 );
 
 /*==============================================================*/
 /* Table: rooms                                                 */
 /*==============================================================*/
-create table rooms 
+CREATE TABLE rooms 
 (
-   room_id              integer auto_increment         not null,
-   type                 integer                        not null,
-   status               integer                        not null,
-   name                 varchar(50)                    not null,
-   seating_capacity     integer                        not null,
-   open_time            time                           not null,
-   close_time           time                           not null,
-   primary key (room_id),
-   foreign key (status) 
-      references room_status (status) 
-      on update cascade on delete cascade,
-   foreign key (type) 
-      references room_types(type) 
-      on update cascade on delete cascade
+   room_id              INTEGER AUTO_INCREMENT         NOT NULL,
+   type                 INTEGER                        NOT NULL,
+   status               INTEGER                        NOT NULL,
+   name                 VARCHAR(50)                    NOT NULL,
+   capacity             INTEGER                        NOT NULL,
+   PRIMARY KEY (room_id),
+   FOREIGN KEY (status) 
+      REFERENCES room_status (status) 
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   FOREIGN KEY (type) 
+      REFERENCES room_types(type) 
+      ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 /*==============================================================*/
 /* Table: resv_secu_levels                                      */
 /*==============================================================*/
-create table resv_secu_levels 
+CREATE TABLE resv_secu_levels 
 (
-   secu_level           integer                        not null,
-   label                varchar(50)                    not null,
-   description          varchar(200)                   null,
-   primary key (secu_level)
+   secu_level           INTEGER                        NOT NULL,
+   label                VARCHAR(50)                    NOT NULL,
+   description          VARCHAR(200)                   NULL,
+   PRIMARY KEY (secu_level)
 );
 
 /*==============================================================*/
 /* Table: resv_status                                           */
 /*==============================================================*/
-create table resv_status 
+CREATE TABLE resv_status 
 (
-   status               integer                        not null,
-   label                varchar(50)                    not null,
-   description          varchar(200)                   null,
-   primary key (status)
+   status               INTEGER                        NOT NULL,
+   label                VARCHAR(50)                    NOT NULL,
+   description          VARCHAR(200)                   NULL,
+   PRIMARY KEY (status)
 );
 
 /*==============================================================*/
 /* Table: reservations                                          */
 /*==============================================================*/
-create table reservations 
+CREATE TABLE reservations 
 (
-   username             varchar(50)                    not null,
-   resv_id              integer                        not null,
-   room_id              integer                        not null,
-   secu_level           integer                        not null,
-   session_id           integer                        not null,
-   status               integer                        not null,
-   note                 varchar(100)                   null,
-   create_time          timestamp                      null,
-   update_time          timestamp                      null,
-   cancel_time          timestamp                      null,
-   primary key (username, resv_id),
-   foreign key (room_id) 
-      references rooms(room_id   ) 
-      on update cascade on delete cascade,
-   foreign key (secu_level) 
-      references resv_secu_levels(secu_level) 
-      on update cascade on delete cascade,
-   foreign key (session_id) 
-      references sessions(session_id) 
-      on update cascade on delete cascade,
-   foreign key (status) 
-      references resv_status(status) 
-      on update cascade on delete cascade,
-   foreign key (username) 
-      references users(username) 
-      on update cascade on delete cascade
+   username             VARCHAR(50)                    NOT NULL,
+   resv_id              INTEGER                        NOT NULL,
+   room_id              INTEGER                        NOT NULL,
+   secu_level           INTEGER                        NOT NULL,
+   session_id           INTEGER                        NOT NULL,
+   status               INTEGER                        NOT NULL,
+   title                VARCHAR(50)                    NOT NULL,
+   note                 VARCHAR(100)                   NULL,
+   create_time          TIMESTAMP                      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   update_time          TIMESTAMP                      NULL ON UPDATE CURRENT_TIMESTAMP,
+   PRIMARY KEY (username, resv_id),
+   FOREIGN KEY (room_id) 
+      REFERENCES rooms(room_id) 
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   FOREIGN KEY (secu_level) 
+      REFERENCES resv_secu_levels(secu_level) 
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   FOREIGN KEY (session_id) 
+      REFERENCES sessions(session_id) 
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   FOREIGN KEY (status) 
+      REFERENCES resv_status(status) 
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   FOREIGN KEY (username) 
+      REFERENCES users(username) 
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   CHECK (create_time <= update_time)
 );
-create index idx_resv_id ON reservations (resv_id);
-alter table reservations modify column resv_id integer auto_increment;
+/* Make resv_id auto-increment */
+CREATE INDEX idx_resv_id ON reservations (resv_id);
+ALTER TABLE reservations MODIFY COLUMN resv_id INTEGER AUTO_INCREMENT;
 
 /*==============================================================*/
 /* Table: time_slots                                            */
 /*==============================================================*/
-create table time_slots 
+CREATE TABLE time_slots 
 (
-   username             varchar(50)                    not null,
-   resv_id              integer                        not null,
-   slot_id              integer                        not null,
-   start_time           timestamp                      not null,
-   end_time             timestamp                      not null,
-   primary key (username, resv_id, slot_id),
-   foreign key (username, resv_id) 
-      references reservations (username, resv_id) 
-      on update cascade on delete cascade
+   username             VARCHAR(50)                    NOT NULL,
+   resv_id              INTEGER                        NOT NULL,
+   slot_id              INTEGER                        NOT NULL,
+   start_time           TIMESTAMP                      NOT NULL,
+   end_time             TIMESTAMP                      NOT NULL,
+   PRIMARY KEY (username, resv_id, slot_id),
+   FOREIGN KEY (username, resv_id) 
+      REFERENCES reservations (username, resv_id) 
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   CHECK (start_time < end_time)
 );
-create index idx_slot_id ON time_slots (slot_id);
-alter table time_slots modify column slot_id integer auto_increment;
+/* Make slot_id auto-increment */
+CREATE INDEX idx_slot_id ON time_slots (slot_id);
+ALTER TABLE time_slots MODIFY COLUMN slot_id INTEGER AUTO_INCREMENT;
 
 /*==============================================================*/
 /* Table: languages                                             */
 /*==============================================================*/
-create table languages 
+CREATE TABLE languages 
 (
-   lang_code            varchar(35)                    not null,
-   name                 varchar(50)                    not null,
-   primary key (lang_code)
+   lang_code            VARCHAR(35)                    NOT NULL,
+   name                 VARCHAR(50)                    NOT NULL,
+   PRIMARY KEY (lang_code)
 );
 
 /*==============================================================*/
 /* Table: setting_trans                                         */
 /*==============================================================*/
-create table setting_trans 
+CREATE TABLE setting_trans 
 (
-   lang_code            varchar(35)                    not null,
-   id                   integer                        not null,
-   name                 varchar(255)                   not null,
-   primary key (lang_code, id),
-   foreign key (lang_code)
-      references languages (lang_code)
-      on update cascade on delete cascade,
-   foreign key (id)
-      references settings (id)
-      on update cascade on delete cascade
+   lang_code            VARCHAR(35)                    NOT NULL,
+   id                   INTEGER                        NOT NULL,
+   label                VARCHAR(50)                    NOT NULL,
+   description          VARCHAR(200)                   NULL,
+   PRIMARY KEY (lang_code, id),
+   FOREIGN KEY (lang_code)
+      REFERENCES languages (lang_code)
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   FOREIGN KEY (id)
+      REFERENCES settings (id)
+      ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 /*==============================================================*/
 /* Table: user_role_trans                                       */
 /*==============================================================*/
-create table user_role_trans 
+CREATE TABLE user_role_trans 
 (
-   role                 integer                        not null,
-   lang_code            varchar(35)                    not null,
-   label                varchar(50)                    not null,
-   description          varchar(200)                   null,
-   primary key (role, lang_code),
-   foreign key (role) 
-      references user_roles (role) 
-      on update cascade on delete cascade,
-   foreign key (lang_code) 
-      references languages(lang_code) 
-      on update cascade on delete cascade
+   role                 INTEGER                        NOT NULL,
+   lang_code            VARCHAR(35)                    NOT NULL,
+   label                VARCHAR(50)                    NOT NULL,
+   description          VARCHAR(200)                   NULL,
+   PRIMARY KEY (role, lang_code),
+   FOREIGN KEY (role) 
+      REFERENCES user_roles (role) 
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   FOREIGN KEY (lang_code) 
+      REFERENCES languages(lang_code) 
+      ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 /*==============================================================*/
 /* Table: user_trans                                            */
 /*==============================================================*/
-create table user_trans 
+CREATE TABLE user_trans 
 (
-   username             varchar(50)                    not null,
-   lang_code            varchar(35)                    not null,
-   name                 varchar(50)                    not null,
-   primary key (username, lang_code),
-   foreign key (username) 
-      references users(username) 
-      on update cascade on delete cascade,
-   foreign key (lang_code) 
-      references languages(lang_code) 
-      on update cascade on delete cascade
+   username             VARCHAR(50)                    NOT NULL,
+   lang_code            VARCHAR(35)                    NOT NULL,
+   name                 VARCHAR(50)                    NOT NULL,
+   PRIMARY KEY (username, lang_code),
+   FOREIGN KEY (username) 
+      REFERENCES users(username) 
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   FOREIGN KEY (lang_code) 
+      REFERENCES languages(lang_code) 
+      ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+/*==============================================================*/
+/* Table: notice_trans                                          */
+/*==============================================================*/
+CREATE TABLE notice_trans 
+(
+   username             VARCHAR(50)                    NOT NULL,
+   notice_id            INTEGER                        NOT NULL,
+   lang_code            VARCHAR(35)                    NOT NULL,
+   title                VARCHAR(100)                   NOT NULL,
+   content              TEXT                           NOT NULL,
+   PRIMARY KEY (username, notice_id, lang_code),
+   FOREIGN KEY (username, notice_id)
+      REFERENCES notices (username, notice_id)
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   FOREIGN KEY (lang_code) 
+      REFERENCES languages (lang_code)
+      ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 /*==============================================================*/
 /* Table: session_trans                                         */
 /*==============================================================*/
-create table session_trans 
+CREATE TABLE session_trans 
 (
-   lang_code            varchar(35)                    not null,
-   session_id           integer                        not null,
-   name                 varchar(50)                    not null,
-   primary key (lang_code, session_id),
-   foreign key (lang_code) 
-      references languages(lang_code) 
-      on update cascade on delete cascade,
-   foreign key (session_id) 
-      references sessions(session_id) 
-      on update cascade on delete cascade
+   lang_code            VARCHAR(35)                    NOT NULL,
+   session_id           INTEGER                        NOT NULL,
+   name                 VARCHAR(50)                    NOT NULL,
+   PRIMARY KEY (lang_code, session_id),
+   FOREIGN KEY (lang_code) 
+      REFERENCES languages(lang_code) 
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   FOREIGN KEY (session_id) 
+      REFERENCES sessions(session_id) 
+      ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 /*==============================================================*/
 /* Table: room_status_trans                                     */
 /*==============================================================*/
-create table room_status_trans 
+CREATE TABLE room_status_trans 
 (
-   status               integer                        not null,
-   lang_code            varchar(35)                    not null,
-   label                varchar(50)                    not null,
-   description          varchar(200)                   null,
-   primary key (status, lang_code),
-   foreign key (status) 
-      references room_status (status) 
-      on update cascade on delete cascade,
-   foreign key (lang_code) 
-      references languages(lang_code) 
-      on update cascade on delete cascade
+   status               INTEGER                        NOT NULL,
+   lang_code            VARCHAR(35)                    NOT NULL,
+   label                VARCHAR(50)                    NOT NULL,
+   description          VARCHAR(200)                   NULL,
+   PRIMARY KEY (status, lang_code),
+   FOREIGN KEY (status) 
+      REFERENCES room_status (status) 
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   FOREIGN KEY (lang_code) 
+      REFERENCES languages(lang_code) 
+      ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 /*==============================================================*/
 /* Table: room_type_trans                                       */
 /*==============================================================*/
-create table room_type_trans 
+CREATE TABLE room_type_trans 
 (
-   lang_code            varchar(35)                    not null,
-   type                 integer                        not null,
-   label                varchar(50)                    not null,
-   description          varchar(200)                   null,
-   primary key (lang_code, type),
-   foreign key (lang_code) 
-      references languages(lang_code) 
-      on update cascade on delete cascade,
-   foreign key (type) 
-      references room_types (type) 
-      on update cascade on delete cascade
+   lang_code            VARCHAR(35)                    NOT NULL,
+   type                 INTEGER                        NOT NULL,
+   label                VARCHAR(50)                    NOT NULL,
+   description          VARCHAR(200)                   NULL,
+   PRIMARY KEY (lang_code, type),
+   FOREIGN KEY (lang_code) 
+      REFERENCES languages(lang_code) 
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   FOREIGN KEY (type) 
+      REFERENCES room_types (type) 
+      ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 /*==============================================================*/
 /* Table: room_trans                                            */
 /*==============================================================*/
-create table room_trans 
+CREATE TABLE room_trans 
 (
-   lang_code            varchar(35)                    not null,
-   room_id              integer                        not null,
-   name                 varchar(50)                    not null,
-   primary key (lang_code, room_id),
-   foreign key (lang_code) 
-      references languages(lang_code) 
-      on update cascade on delete cascade,
-   foreign key (room_id) 
-      references rooms(room_id) 
-      on update cascade on delete cascade
+   lang_code            VARCHAR(35)                    NOT NULL,
+   room_id              INTEGER                        NOT NULL,
+   name                 VARCHAR(50)                    NOT NULL,
+   PRIMARY KEY (lang_code, room_id),
+   FOREIGN KEY (lang_code) 
+      REFERENCES languages(lang_code) 
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   FOREIGN KEY (room_id) 
+      REFERENCES rooms(room_id) 
+      ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 /*==============================================================*/
 /* Table: resv_secu_level_trans                                 */
 /*==============================================================*/
-create table resv_secu_level_trans 
+CREATE TABLE resv_secu_level_trans 
 (
-   lang_code            varchar(35)                    not null,
-   secu_level           integer                        not null,
-   label                varchar(50)                    not null,
-   description          varchar(200)                   null,
-   primary key (lang_code, secu_level),
-   foreign key (lang_code) 
-      references languages(lang_code) 
-      on update cascade on delete cascade,
-   foreign key (secu_level) 
-      references resv_secu_levels (secu_level) 
-      on update cascade on delete cascade
+   lang_code            VARCHAR(35)                    NOT NULL,
+   secu_level           INTEGER                        NOT NULL,
+   label                VARCHAR(50)                    NOT NULL,
+   description          VARCHAR(200)                   NULL,
+   PRIMARY KEY (lang_code, secu_level),
+   FOREIGN KEY (lang_code) 
+      REFERENCES languages(lang_code) 
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   FOREIGN KEY (secu_level) 
+      REFERENCES resv_secu_levels (secu_level) 
+      ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 /*==============================================================*/
 /* Table: resv_status_trans                                     */
 /*==============================================================*/
-create table resv_status_trans 
+CREATE TABLE resv_status_trans 
 (
-   lang_code            varchar(35)                    not null,
-   status               integer                        not null,
-   label                varchar(50)                    not null,
-   description          varchar(200)                   null,
-   primary key (lang_code, status),
-   foreign key (lang_code) 
-      references languages   (lang_code) 
-      on update cascade on delete cascade,
-   foreign key (status) 
-      references resv_status (status) 
-      on update cascade on delete cascade
+   lang_code            VARCHAR(35)                    NOT NULL,
+   status               INTEGER                        NOT NULL,
+   label                VARCHAR(50)                    NOT NULL,
+   description          VARCHAR(200)                   NULL,
+   PRIMARY KEY (lang_code, status),
+   FOREIGN KEY (lang_code) 
+      REFERENCES languages   (lang_code) 
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   FOREIGN KEY (status) 
+      REFERENCES resv_status (status) 
+      ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 /*==============================================================*/
 /* Table: resv_trans                                            */
 /*==============================================================*/
-create table resv_trans 
+CREATE TABLE resv_trans 
 (
-   lang_code            varchar(35)                    not null,
-   username             varchar(50)                    not null,
-   resv_id              integer                        not null,
-   note                 varchar(100)                   not null,
-   primary key (username, lang_code, resv_id),
-   foreign key (lang_code) 
-      references languages(lang_code) 
-      on update cascade on delete cascade,
-   foreign key (username, resv_id) 
-      references reservations (username, resv_id) 
-      on update cascade on delete cascade
+   lang_code            VARCHAR(35)                    NOT NULL,
+   username             VARCHAR(50)                    NOT NULL,
+   resv_id              INTEGER                        NOT NULL,
+   title                VARCHAR(50)                    NOT NULL,
+   note                 VARCHAR(100)                   NULL,
+   PRIMARY KEY (username, lang_code, resv_id),
+   FOREIGN KEY (lang_code) 
+      REFERENCES languages(lang_code) 
+      ON UPDATE CASCADE ON DELETE CASCADE,
+   FOREIGN KEY (username, resv_id) 
+      REFERENCES reservations (username, resv_id) 
+      ON UPDATE CASCADE ON DELETE CASCADE
 );
+
+/*--------------------------------------------------------------*/
