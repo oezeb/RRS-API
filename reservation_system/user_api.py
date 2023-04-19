@@ -1,19 +1,14 @@
-import logging
-from dateutil.parser import parse
-
-from flask import g, request
+from flask import g, request, current_app
 from flask.views import MethodView
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from mysql.connector import Error, errorcode
 
 from reservation_system import db
-from reservation_system.util import abort, time_slot_conflict, current_session
+from reservation_system.util import abort
 from reservation_system.auth import auth_required
 
-logger = logging.getLogger(__name__)
-
-def init_user_api(app):
+def init_api(app):
     for path, view in (
         ('user', User),
         ('user/reservation', Reservation),
@@ -23,230 +18,177 @@ def init_user_api(app):
 class User(MethodView):
     @auth_required()
     def get(self):
-        """
-        Get user info.
-        User should be logged in(have a valid auth token)
-        """
-        username = g.sub['username']
-        cnx = db.get_cnx(); cursor = cnx.cursor(dictionary=True)
-        cursor.execute(
-            "SELECT username, name, email, role FROM %s WHERE username = %s", 
-            (db.USERS, username)
-        )
-        user = cursor.fetchone()
-        if not user:
+        try:
+            user = db.User.get(g.sub['username'])
+            return user
+        except Exception as e:
+            current_app.logger.error(f"Error occurred while getting user: {e}")
             abort(404, message='User not found')
-        return user
 
     @auth_required()
     def patch(self):
         """
         Update user info.
-        User should be logged in(have a valid auth token)
-        User should be admin or updating own info
-        Data may include `name`, or `email` only.
-        If data includes `new_password`, it should include `password` as well.
+        - updatable fields: `email`, `password`
+        - updating `password` requires `new_password` and `password`
         """
-        print(request.json)
-        username = g.sub['username']
         data = request.json
-        if 'username' in data or 'role' in data:
-            abort(403, message='Access denied')
-        
-        new_password = data.pop('new_password', None)
-        password = data.pop('password', None)
-        if new_password and not password:
-            abort(400, message='Old password is missing')
-        cnx = db.get_cnx(); cursor = cnx.cursor(dictionary=True)
-        if password and new_password:
-            cursor.execute(f"""
-                SELECT password
-                FROM {db.USERS}
-                WHERE username = '{username}'
-            """)
-            user = cursor.fetchone()
-            if not user or not check_password_hash(user['password'], password):
+        if set(data.keys()) - {'email', 'password', 'new_password'}:
+            abort(400, message='Invalid field')
+  
+        if 'password' in data and 'new_password' in data:
+            password = db.User.get_password(g.sub['username'])
+            if not check_password_hash(password, data['password']):
                 abort(401, message='Invalid password')
-            data['password'] = generate_password_hash(new_password)
-        
-        cursor.execute(f"""
-            UPDATE {db.USERS}
-            SET {', '.join([f'{k} = %s' for k in data])}
-            WHERE username = '{username}'
-        """, (*data.values(),))
-        cnx.commit(); cursor.close()
+            password = generate_password_hash(data['new_password'])
+        elif 'password' in data or 'new_password' in data:
+            abort(400, message='Missing new password or password')
+        else:
+            password = None
+
+        email = data.get('email', None)
+
+        try: 
+            db.User.update(g.sub['username'], email=email, password=password)
+        except Exception as e:
+            current_app.logger.error(f"Error occurred while updating user: {e}")
+            abort(500, message='Failed to update user')
+
         return {'message': 'User updated successfully'}, 200
 
 class Reservation(MethodView):
     @auth_required()
     def get(self):
         """
-        Get reservation info of current session.
-        As a `reservation` can have multiple `time_slots`,
-        this endpoint returns two types of data:
-        - By default, it will join `reservations` and `time_slots` tables. 
-        So for each `time_slot`, the `reservations` info will be repeated.
-        - The `time_slots` will be grouped by `reservation` if `group_by_resv` is `true`.
-        There will be a `time_slots` field in the response, which is a list of `time_slots` for each `reservation`.
-
-        Extra query parameters:
-            - `group_by_resv`: `true` or `false`. Default is `false`.
-            - `lang_code`: `en`(for now)
+        Get reservations of current session of current user.
+        - Optional query parameter `date` as `YYYY-MM-DD`
+        allow user to get whole day reservations of a specific date.
         """
         where = request.args.to_dict()
         if 'session_id' not in where:
             where['session_id'] = db.Session.current()['session_id']
         where['username'] = g.sub['username']
-        
-        date = where.pop('date', None)
-        group_by_resv = where.pop('group_by_resv', 'false').lower() == 'true'
-        
-        if group_by_resv:
-            ts_where = {}
-            for k in ['slot_id', 'start_time', 'end_time']:
-                if k in where: ts_where[k] = where.pop(k)
-            table = f"{db.RESERVATIONS}"
-            if 'lang_code' in where:
-                table += f" JOIN {db.RESV_TRANS} USING (resv_id, username)"
-            resvs = db.select(table, where)
-            
-            if date:
-                ts_where['DATE(start_time)'] = date
-                ts_where['DATE(end_time)'] = date
-            for resv in resvs:
-                resv['time_slots'] = db.select(
-                    db.TIME_SLOTS, 
-                    {**ts_where, 'resv_id': resv['resv_id']},
-                    order_by=['start_time', 'end_time']
-                )
-            return resvs
-        else:
-            table = f"{db.RESERVATIONS} NATURAL JOIN {db.TIME_SLOTS}"
-            if 'lang_code' in where:
-                table += f" JOIN {db.RESV_TRANS} USING (resv_id, username)"
-            if date:
-                where['DATE(start_time)'] = date
-                where['DATE(end_time)'] = date
-            return db.select(table, where, order_by=['start_time', 'end_time'])
+
+        return db.Reservation.get(where)
     
     @auth_required()
     def post(self):
         """
         Create a new reservation.
-        `request.json` should contain:
-            - Mandatory: 
-                - `room_id`
-                - `title`
-                - Not empty list of time_slots with [`start_time`, `end_time`]
-            - Optional:
-                - `note`
-                - `secu_level`: default is `0`(public), user_role=2 can have `secu_level`=1(anonymous)
-        `status` and `session_id` will be generated automatically.
+        - Required fields: `room_id`, `title`, `time_slots`
+            - `time_slots`: Non-empty list of (`start_time`, `end_time`)
+        - Optional fields: `note`, `secu_level`
+            - `secu_level`: default is `0`(public), user_role=2 can have `secu_level`=1(anonymous)
+        - Auto generated fields: `status`, `session_id`
             - `status`: depends on the user role and the nature of the reservation
-                - user_role<0: cannot create reservation(abort 403)
-                - user_role=0: `status`=0
-                - user_role=1: `status`=1 if len(time_slots)==1 else 0
-                - user_role>=2: `status`=1
-            - `session_id`: default is current session
+                user_role   |time_slots|in_time_window|in_time_limit|is_comb_of_periods|status   |reservation_type
+                ------------|----------|--------------|-------------|------------------|---------|----------------
+               -1 BLOCKED   |any       |any           |any          |any               |FORBIDDEN|any
+                0 RESTRICTED|1         |YES           |YES          |YES               |0 PENDING|BASIC
+                0 RESTRICTED|>1        |any           |any          |any               |FORBIDDEN|ADVANCED
+                0 RESTRICTED|any       |NO            |any          |any               |FORBIDDEN|ADVANCED
+                0 RESTRICTED|any       |any           |NO           |any               |FORBIDDEN|ADVANCED
+                0 RESTRICTED|any       |any           |any          |NO                |FORBIDDEN|ADVANCED
+                1 BASIC     |1         |YES           |YES          |YES               |1 CONFRIMED|BASIC
+                1 BASIC     |>1        |any           |any          |YES               |0        |ADVANCED
+                1 BASIC     |any       |NO            |any          |YES               |0        |ADVANCED
+                1 BASIC     |any       |any           |NO           |YES               |0        |ADVANCED
+                1 BASIC     |any       |any           |any          |NO                |FORBIDDEN|ADVANCED
+                2 ADVANCED  |any       |any           |any          |YES               |1        |any
+                2 ADVANCED  |any       |any           |any          |NO                |FORBIDDEN|any
+                3 ADMIN     |any       |any           |any          |any               |1        |any
+            - `session_id`: current session
         """
-        if g.sub['role'] < 0:
+        if g.sub['role'] <= db.UserRole.BLOCKED:
             abort(403, message='Access denied')
         data = request.json
+
+        # Check required fields
         if 'room_id' not in data or 'title' not in data or 'time_slots' not in data:
             abort(400, message='Missing required fields')
-        if 'secu_level' not in data:
-            data['secu_level'] = 0
-        elif g.sub['role'] < 2 and data['secu_level'] > 0:
-            abort(403, message='Access denied')
-        elif g.sub['role'] == 2 and data['secu_level'] > 1:
-            abort(403, message='Access denied')
         if not data['time_slots']:
             abort(400, message='Time_slots cannot be empty')
+        
+        # Check optional fields
+        if 'secu_level' not in data:
+            data['secu_level'] = 0
+        elif g.sub['role'] < db.UserRole.ADVANCED and data['secu_level'] > 0:
+            abort(403, message='Access denied')
+        elif g.sub['role'] == db.UserRole.ADVANCED and data['secu_level'] > 1:
+            abort(403, message='Access denied')
+        
+        # Auto generate fields
+        data['status'] = db.ResvStatus.PENDING
+        if g.sub['role'] >= db.UserRole.ADMIN:
+            data['status'] = db.ResvStatus.CONFIRMED
+        else:
+            is_comb_of_periods = db.Period.is_comb_of_periods(data['time_slots'])
+            if not is_comb_of_periods:
+                abort(400, message='Time_slots must be combination of periods')
+            
+            if g.sub['role'] == db.UserRole.ADVANCED:
+                data['status'] = db.ResvStatus.CONFIRMED
+            else:
+                slot_num = len(data['time_slots'])
+                in_time_window = db.Setting.in_time_window(data['time_slots'])
+                in_time_limit = db.Setting.in_time_limit(data['time_slots'])
 
-        data['status'] = 0
-        if g.sub['role'] == 1 and len(data['time_slots']) == 1:
-            data['status'] = 1
-        elif g.sub['role'] >= 2:
-            data['status'] = 1
-        session = db.Session.current()
-        data['session_id'] = session['session_id']
-        if not data['session_id']:
-            abort(404, message='Session not found')
+                if g.sub['role'] <= db.UserRole.RESTRICTED:
+                    if slot_num > 1 or not in_time_window or not in_time_limit:
+                        abort(400, message='Access denied')
+                elif g.sub['role'] == db.UserRole.BASIC:
+                    if slot_num == 1 and in_time_window and in_time_limit:
+                        data['status'] = db.ResvStatus.CONFIRMED
+        
+        data['session_id'] = db.Session.current()['session_id']
 
+        # Check other constraints
         if not db.Room.available(data['room_id']):
             abort(400, message='Room not available')
-        if not db.Setting.in_time_window(data['time_slots']):
-            abort(400, message='Time slot not in time window')
-        if not db.Setting.in_time_limit(data['time_slots']):
-            abort(400, message='Time slot not in time limit')
         if not db.Setting.below_max_daily(g.sub['username']):
             abort(400, message='Reservation per day limit reached')
+        # There are more constraints, already implemented in the database.
+        # See `schema.sql` and `db.py::init_db`
+        # - `start_time` < `end_time`
+        # - `start_time` and `end_time` within `session.start_time` and `session.end_time`
+        # - `confirmed` and `pending` reservation `time_slots` do not overlap
 
-        cnx = db.get_cnx(); cursor = cnx.cursor(dictionary=True)
-    
-        try:
-            cursor.execute(f"""
-                INSERT INTO {db.RESERVATIONS}
-                (username, room_id, title, note, secu_level, status, session_id)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (g.sub['username'], data['room_id'], data['title'], data['note'], data['secu_level'], data['status'], data['session_id']))
-            resv_id = cursor.lastrowid
-            cursor.executemany(f"""
-                INSERT INTO {db.TIME_SLOTS}
-                (resv_id, username, start_time, end_time)
-                VALUES (%s, %s, %s, %s)
-            """, [(resv_id, g.sub['username'], ts['start_time'], ts['end_time']) for ts in data['time_slots']])
-            cnx.commit()
+        data['username'] = g.sub['username']
+        try: 
+            resv_id = db.Reservation.insert(data)
         except Error as err:
+            current_app.logger.error(err)
             if err.errno == errorcode.ER_DUP_ENTRY:
                 abort(409, message='Reservation already exists')
             else:
                 abort(500, message=f'Database error: {err.msg}')
-        finally:
-            cursor.close()
-        return { 'resv_id': resv_id, 'message': 'Reservation created successfully'}, 201
 
+        return { 'resv_id': resv_id, 'message': 'Reservation created successfully'}, 201
+    
     @auth_required()
     def patch(self):
         """
         Update reservation info.
         `request.json` should contain:
-            - Mandatory: `resv_id`
-            - Optional:
-                - `title`
-                - `note`
-                - `status` only set to `2`(cancelled)
+            - `resv_id`
+            - `data`: contains the fields to be updated. `title`, `note`, `status`
+                - `status` if exists=CANCELLED
         """
-        if g.sub['role'] < 0:
+        if g.sub['role'] <= db.UserRole.BLOCKED:
             abort(403, message='Access denied')
         data = request.json
-        keys = set(data.keys())
-        if keys - {'resv_id', 'title', 'note', 'status'}:
-            abort(400, message='Invalid fields')
-        if 'resv_id' not in keys:
+        if not data['resv_id'] or not data['data']:
             abort(400, message='Missing required fields')
-        resv_id = data.pop('resv_id')
-        if not data:
-            abort(400, message='Missing required fields')
-        if 'status' in data and data['status'] != 2:
+        if 'status' in data['data'] and data['data']['status'] != db.ResvStatus.CANCELLED:
             abort(400, message='Invalid status')
-        session = current_session()
-        data['session_id'] = session['session_id']
-        if not data['session_id']:
-            abort(404, message='Session not found')
-
-        cnx = db.get_cnx(); cursor = cnx.cursor(dictionary=True)
+        if set(data['data'].keys()) - {'title', 'note', 'status'}:
+            abort(400, message='Invalid fields')
+        
         try:
-            cursor.execute(f"""
-                UPDATE {db.RESERVATIONS}
-                SET {', '.join([f'{k} = %s' for k in data])}
-                WHERE resv_id = {resv_id} AND username = '{g.sub['username']}'
-            """, (*data.values(),))
-            cnx.commit()
-        except:
-            abort(500, message='Database error')
-        finally:
-            cursor.close()
+            db.Reservation.update(data['resv_id'], g.sub['username'], data['data'])
+        except Error as err:
+            abort(500, message=f'Database error: {err.msg}')
+
         return {'message': 'Reservation updated successfully'}, 200
 
     @auth_required()
@@ -256,7 +198,7 @@ class Reservation(MethodView):
         `request.json` should contain:
             - Mandatory: `resv_id`, `slot_id`
         """
-        if g.sub['role'] < 0:
+        if g.sub['role'] <= db.UserRole.BLOCKED:
             abort(403, message='Access denied')
         data = request.json
         if 'resv_id' not in data or 'slot_id' not in data:
@@ -265,7 +207,7 @@ class Reservation(MethodView):
         cnx = db.get_cnx(); cursor = cnx.cursor(dictionary=True)
         try:
             cursor.execute(f"""
-                DELETE FROM {db.TIME_SLOTS}
+                DELETE FROM {db.Reservation.TS_TABLE}
                 WHERE resv_id = %s AND slot_id = %s AND username = %s
             """, (data['resv_id'], data['slot_id'], g.sub['username']))
             cnx.commit()
@@ -273,4 +215,4 @@ class Reservation(MethodView):
             abort(500, message='Database error')
         finally:
             cursor.close()
-        return {'message': 'Time slot deleted successfully'}, 200
+        return {'message': 'Time slot deleted successfully'}, 204
