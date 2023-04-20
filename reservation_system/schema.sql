@@ -31,7 +31,7 @@ CREATE TABLE settings
 (
    
    id                   INTEGER                        NOT NULL,
-   value                VARCHAR(255)                   NOT NULL,
+   value                VARCHAR(255)                   NULL,
    label                VARCHAR(50)                    NOT NULL,
    description          VARCHAR(200)                   NULL,
    PRIMARY KEY (id)
@@ -183,7 +183,7 @@ CREATE TABLE reservations
    resv_id              INTEGER                        NOT NULL,
    room_id              INTEGER                        NOT NULL,
    secu_level           INTEGER                        NOT NULL,
-   session_id           INTEGER                        NOT NULL,
+   session_id           INTEGER                        NULL,
    status               INTEGER                        NOT NULL,
    title                VARCHAR(50)                    NOT NULL,
    note                 VARCHAR(100)                   NULL,
@@ -196,7 +196,7 @@ CREATE TABLE reservations
    FOREIGN KEY (secu_level) 
       REFERENCES resv_secu_levels(secu_level) 
       ON UPDATE CASCADE ON DELETE CASCADE,
-   FOREIGN KEY (session_id) 
+   FOREIGN KEY (session_id)
       REFERENCES sessions(session_id) 
       ON UPDATE CASCADE ON DELETE CASCADE,
    FOREIGN KEY (status) 

@@ -14,7 +14,7 @@ class Language:
     EN = 'en'
 class SecuLevel: 
     TABLE = "resv_secu_levels"
-    PUBLIC = 0; ANONYMOUS = 1; PRIVATE = 2
+    PUBLIC = 0; PRIVATE = 2
 class ResvStatus: 
     TABLE = "resv_status"
     PENDING = 0; CONFIRMED = 1; CANCELLED = 2; REJECTED = 3
@@ -49,8 +49,7 @@ INSERT INTO {Language.TABLE} (lang_code, name) VALUES
 ('{Language.EN}', 'English');
 
 INSERT INTO {SecuLevel.TABLE} (secu_level, label) VALUES 
-({SecuLevel.PUBLIC}, '公共'), ({SecuLevel.ANONYMOUS}, '匿名'), 
-({SecuLevel.PRIVATE}, '私密');
+({SecuLevel.PUBLIC}, '公共'), ({SecuLevel.PRIVATE}, '私密');
 
 INSERT INTO {ResvStatus.TABLE} (status, label) VALUES 
 ({ResvStatus.PENDING}, '待定'),
@@ -308,8 +307,7 @@ INSERT ON {Reservation.TS_TABLE} FOR EACH ROW BEGIN
         FROM {Reservation.TS_TABLE} t2
         WHERE t2.end_time<=NEW.start_time 
         OR t2.start_time>=NEW.end_time) 
-    AND r.room_id = room_id AND r.session_id = session_id
-    AND r.status IN (
+    AND r.room_id = room_id AND r.status IN (
         {ResvStatus.PENDING}, {ResvStatus.CONFIRMED});
 
     IF i > 0 THEN
@@ -317,14 +315,16 @@ INSERT ON {Reservation.TS_TABLE} FOR EACH ROW BEGIN
         'Time slot overlaps with existing time slot.';
     END IF;
 
-    SELECT COUNT(*) INTO i FROM {Session.TABLE} s
-    WHERE s.session_id = session_id 
-    AND s.start_time <= NEW.start_time 
-    AND s.end_time >= NEW.end_time;
+    IF session_id IS NOT NULL THEN
+        SELECT COUNT(*) INTO i FROM {Session.TABLE} s
+        WHERE s.session_id = session_id 
+        AND s.start_time <= NEW.start_time 
+        AND s.end_time >= NEW.end_time;
 
-    IF i = 0 THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT =
-        'Time slot is not within session time.';
+        IF i = 0 THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT =
+            'Time slot is not within session time.';
+        END IF;
     END IF;
 END;
 """
@@ -349,8 +349,7 @@ UPDATE ON {Reservation.TS_TABLE} FOR EACH ROW BEGIN
         FROM {Reservation.TS_TABLE} t2
         WHERE t2.end_time<=NEW.start_time 
         OR t2.start_time>=NEW.end_time)
-    AND r.room_id = room_id AND r.session_id = session_id
-    AND r.status IN (
+    AND r.room_id = room_id AND r.status IN (
         {ResvStatus.PENDING}, {ResvStatus.CONFIRMED})
     AND t.resv_id <> NEW.resv_id 
     AND t.username <> NEW.username 
@@ -361,14 +360,16 @@ UPDATE ON {Reservation.TS_TABLE} FOR EACH ROW BEGIN
         'Time slot overlaps with existing time slot.';
     END IF;
 
-    SELECT COUNT(*) INTO i FROM {Session.TABLE} s
-    WHERE s.session_id = session_id 
-    AND s.start_time <= NEW.start_time 
-    AND s.end_time >= NEW.end_time;
-    
-    IF i = 0 THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 
-        'Time slot is not within session time.';
+    IF session_id IS NOT NULL THEN
+        SELECT COUNT(*) INTO i FROM {Session.TABLE} s
+        WHERE s.session_id = session_id 
+        AND s.start_time <= NEW.start_time 
+        AND s.end_time >= NEW.end_time;
+        
+        IF i = 0 THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 
+            'Time slot is not within session time.';
+        END IF;
     END IF;
 END;
 """

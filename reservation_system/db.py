@@ -1,7 +1,7 @@
 
 import json
 from typing import Union
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 import click
 import dateutil.parser
 import logging
@@ -52,7 +52,7 @@ def init_db():
     set_current_time_zone(cursor)
 
     logger.info("Creating tables...")
-    with current_app.open_resource('data/schema.sql') as f:
+    with current_app.open_resource('schema.sql') as f:
         run(f.read())
 
     logger.info("Populating tables with immutable data...")
@@ -67,7 +67,6 @@ def init_db():
     logger.info("Populating tables with some default data...")
     for filename, table in (
         (   'periods.json', Period.TABLE  ),
-        (  'sessions.json', Session.TABLE ),
         ('room_types.json', RoomType.TABLE),
         (     'rooms.json', Room.TABLE    ),
     ):
@@ -149,27 +148,16 @@ class Setting(schema.Setting):
     
     @staticmethod
     def below_max_daily(username):
-        max_daily = Setting.max_daily()
-        today = datetime.now().strftime("%Y-%m-%d")
-        resvs = select(Reservation.RESV_TABLE, {'username': username, 'DATE(create_time)': today})
-        return len(resvs) < max_daily
+        return len(Reservation.today_resvs(username)) < Setting.max_daily()
 
 class Reservation(schema.Reservation):
     @staticmethod
-    def get(where=None, time_as_str=False):
+    def get(where=None):
         """`where` may contain `date` as `YYYY-MM-DD`"""
         date = where.pop('date', None)
         if date:
             where['DATE(start_time)'] = date
-        res = select(Reservation.TABLE, where, order_by=['start_time', 'end_time'])
-        if time_as_str:
-            for r in res:
-                r['start_time'] = r['start_time'].isoformat()
-                r['end_time'] = r['end_time'].isoformat()
-                r['create_time'] = r['create_time'].isoformat()
-                if r['update_time']:
-                    r['update_time'] = r['update_time'].isoformat()
-        return res
+        return select(Reservation.TABLE, where, order_by=['start_time', 'end_time'])
     
     @staticmethod
     def insert(data):
@@ -205,12 +193,17 @@ class Reservation(schema.Reservation):
             print(data)
         update(table, data, where)
 
+    @staticmethod
+    def today_resvs(username):
+        where = {'username': username, 'DATE(create_time)': date.today()}
+        return select(Reservation.RESV_TABLE, where, order_by=['create_time'])
+
 class User(schema.User):
     @staticmethod
     def get(username=None, where=None):
         cols = ['username', 'name', 'email', 'role']
         where = where or {}
-        if username: 
+        if username:
             where['username'] = username
             return select(User.TABLE, where, cols)[0]
         else:
@@ -233,30 +226,28 @@ class Session(schema.Session):
     @staticmethod
     def current():
         """Get the current session."""
-        return select(Session.TABLE, {'is_current': 1})[0]
+        res = select(Session.TABLE, {'is_current': 1}, order_by=['start_time', 'end_time'])
+        return res[0] if res else None
     
     @staticmethod
-    def get(where=None, time_as_str=False):
-        res = select(Session.TABLE, where, order_by=['start_time', 'end_time'])
-        if time_as_str:
-            for r in res:
-                r['start_time'] = r['start_time'].isoformat()
-                r['end_time'] = r['end_time'].isoformat()
-        return res
+    def get(where=None):
+        return select(Session.TABLE, where, order_by=['start_time', 'end_time'])
     
 class Room(schema.Room):
     @staticmethod
     def available(room_id):
-        return select(Room.TABLE, {'room_id': room_id})[0]['status'] == RoomStatus.AVAILABLE
+        # return select(Room.TABLE, {'room_id': room_id})[0]['status'] == RoomStatus.AVAILABLE
+        room = select(Room.TABLE, {'room_id': room_id})[0]
+        print(room)
+        return room['status'] == RoomStatus.AVAILABLE
 
 class Period(schema.Period):
     @staticmethod
-    def get(where=None, time_as_str=False):
+    def get(where=None):
         res = select(Period.TABLE, where, order_by=['start_time', 'end_time'])
-        if time_as_str:
-            for r in res:
-                r['start_time'] = Setting.timedelta_to_str(r['start_time'])
-                r['end_time'] = Setting.timedelta_to_str(r['end_time'])
+        for r in res:
+            r['start_time'] = Setting.timedelta_to_str(r['start_time'])
+            r['end_time'] = Setting.timedelta_to_str(r['end_time'])
         return res
     
     @staticmethod
@@ -294,16 +285,8 @@ class Period(schema.Period):
 
 class Notice(schema.Notice): 
     @staticmethod
-    def get(where=None, time_as_str=False):
-        res = select(Notice.TABLE, where, order_by=['start_time', 'end_time'])
-        if time_as_str:
-            for r in res:
-                r['start_time'] = r['start_time'].isoformat()
-                r['end_time'] = r['end_time'].isoformat()
-                r['create_time'] = r['create_time'].isoformat()
-                if r['update_time']:
-                    r['update_time'] = r['update_time'].isoformat()
-        return res
+    def get(where=None):
+        return select(Notice.TABLE, where, order_by=['update_time', 'create_time'])
 
 class RoomType(schema.RoomType): pass
 class UserRole(schema.UserRole): pass

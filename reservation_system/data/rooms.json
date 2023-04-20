@@ -1,65 +1,57 @@
 [
     {
+        "room_id": 1,
         "name": "406",
-        "seating_capacity": 108,
-        "open_time": "08:00",
-        "close_time": "21:30",
+        "capacity": 108,
         "type": 1,
         "status": 1
     },
     {
+        "room_id": 2,
         "name": "519",
-        "seating_capacity": 40,
-        "open_time": "08:00",
-        "close_time": "21:30",
+        "capacity": 40,
         "type": 1,
         "status": 0
     },
     {
+        "room_id": 3,
         "name": "516",
-        "seating_capacity": 40,
-        "open_time": "08:00",
-        "close_time": "21:30",
+        "capacity": 40,
         "type": 1,
         "status": 1
     },
     {
+        "room_id": 4,
         "name": "408",
-        "seating_capacity": 32,
-        "open_time": "08:00",
-        "close_time": "21:30",
+        "capacity": 32,
         "type": 1,
         "status": 1
     },
     {
+        "room_id": 5,
         "name": "412",
-        "seating_capacity": 24,
-        "open_time": "08:00",
-        "close_time": "21:30",
+        "capacity": 24,
         "type": 1,
         "status": 1
     },
     {
+        "room_id": 6,
         "name": "419",
-        "seating_capacity": 0,
-        "open_time": "08:00",
-        "close_time": "21:30",
+        "capacity": 0,
         "type": 2,
         "status": 1
     },
     {
+        "room_id": 7,
         "name": "523",
-        "seating_capacity": 0,
-        "open_time": "08:00",
-        "close_time": "21:30",
+        "capacity": 0,
         "type": 2,
         "status": 1
     },
     {
+        "room_id": 8,
         "name": "522",
-        "seating_capacity": 0,
-        "open_time": "08:00",
-        "close_time": "21:30",
+        "capacity": 0,
         "type": 2,
         "status": 1
     }

@@ -1,10 +1,10 @@
 [
     {
         "type": 1,
-        "label": "Computer Lab"
+        "label": "实验室"
     },
     {
         "type": 2,
-        "label":"Meeting Room"
+        "label": "会议室"
     }
 ]

@@ -1,3 +1,5 @@
+from datetime import date
+
 from flask import g, request, current_app
 from flask.views import MethodView
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -12,6 +14,7 @@ def init_api(app):
     for path, view in (
         ('user', User),
         ('user/reservation', Reservation),
+        ('user/reservation/today', TodayResv),
     ):
         app.add_url_rule(f'/api/{path}', view_func=view.as_view(path))
 
@@ -22,7 +25,7 @@ class User(MethodView):
             user = db.User.get(g.sub['username'])
             return user
         except Exception as e:
-            current_app.logger.error(f"Error occurred while getting user: {e}")
+            current_app.logger.error(f"user: {g.sub['username']} not found: {e}")
             abort(404, message='User not found')
 
     @auth_required()
@@ -65,8 +68,6 @@ class Reservation(MethodView):
         allow user to get whole day reservations of a specific date.
         """
         where = request.args.to_dict()
-        if 'session_id' not in where:
-            where['session_id'] = db.Session.current()['session_id']
         where['username'] = g.sub['username']
 
         return db.Reservation.get(where)
@@ -77,27 +78,22 @@ class Reservation(MethodView):
         Create a new reservation.
         - Required fields: `room_id`, `title`, `time_slots`
             - `time_slots`: Non-empty list of (`start_time`, `end_time`)
-        - Optional fields: `note`, `secu_level`
-            - `secu_level`: default is `0`(public), user_role=2 can have `secu_level`=1(anonymous)
-        - Auto generated fields: `status`, `session_id`
+        - Optional fields: `note`, `session_id`
+            - `session_id`: is required for multi-time-slot reservation
+        - Auto generated fields: `status`, `secu_level`
             - `status`: depends on the user role and the nature of the reservation
-                user_role   |time_slots|in_time_window|in_time_limit|is_comb_of_periods|status   |reservation_type
-                ------------|----------|--------------|-------------|------------------|---------|----------------
-               -1 BLOCKED   |any       |any           |any          |any               |FORBIDDEN|any
-                0 RESTRICTED|1         |YES           |YES          |YES               |0 PENDING|BASIC
-                0 RESTRICTED|>1        |any           |any          |any               |FORBIDDEN|ADVANCED
-                0 RESTRICTED|any       |NO            |any          |any               |FORBIDDEN|ADVANCED
-                0 RESTRICTED|any       |any           |NO           |any               |FORBIDDEN|ADVANCED
-                0 RESTRICTED|any       |any           |any          |NO                |FORBIDDEN|ADVANCED
-                1 BASIC     |1         |YES           |YES          |YES               |1 CONFRIMED|BASIC
-                1 BASIC     |>1        |any           |any          |YES               |0        |ADVANCED
-                1 BASIC     |any       |NO            |any          |YES               |0        |ADVANCED
-                1 BASIC     |any       |any           |NO           |YES               |0        |ADVANCED
-                1 BASIC     |any       |any           |any          |NO                |FORBIDDEN|ADVANCED
-                2 ADVANCED  |any       |any           |any          |YES               |1        |any
-                2 ADVANCED  |any       |any           |any          |NO                |FORBIDDEN|any
-                3 ADMIN     |any       |any           |any          |any               |1        |any
-            - `session_id`: current session
+                user_role   |time_slots|in_time_window|in_time_limit|status     |reservation_type
+                ------------|----------|--------------|-------------|-----------|----------------
+               -1 BLOCKED   |any       |any           |any          |FORBIDDEN  |any
+                0 RESTRICTED|1         |YES           |YES          |0 PENDING  |BASIC
+                0 RESTRICTED|>1        |any           |any          |FORBIDDEN  |ADVANCED
+                0 RESTRICTED|any       |NO            |any          |FORBIDDEN  |ADVANCED
+                0 RESTRICTED|any       |any           |NO           |FORBIDDEN  |ADVANCED
+                1 BASIC     |1         |YES           |YES          |1 CONFRIMED|BASIC
+                1 BASIC     |>1        |any           |any          |0 PENDING  |ADVANCED
+                1 BASIC     |any       |NO            |any          |0 PENDING  |ADVANCED
+                1 BASIC     |any       |any           |NO           |0 PENDING  |ADVANCED
+                2 ADVANCED  |any       |any           |any          |1 CONFRIMED|any
         """
         if g.sub['role'] <= db.UserRole.BLOCKED:
             abort(403, message='Access denied')
@@ -109,52 +105,41 @@ class Reservation(MethodView):
         if not data['time_slots']:
             abort(400, message='Time_slots cannot be empty')
         
-        # Check optional fields
-        if 'secu_level' not in data:
-            data['secu_level'] = 0
-        elif g.sub['role'] < db.UserRole.ADVANCED and data['secu_level'] > 0:
-            abort(403, message='Access denied')
-        elif g.sub['role'] == db.UserRole.ADVANCED and data['secu_level'] > 1:
-            abort(403, message='Access denied')
-        
         # Auto generate fields
+        data['secu_level'] = db.SecuLevel.PUBLIC
+        
         data['status'] = db.ResvStatus.PENDING
-        if g.sub['role'] >= db.UserRole.ADMIN:
+        if g.sub['role'] >= db.UserRole.ADVANCED:
             data['status'] = db.ResvStatus.CONFIRMED
         else:
-            is_comb_of_periods = db.Period.is_comb_of_periods(data['time_slots'])
-            if not is_comb_of_periods:
-                abort(400, message='Time_slots must be combination of periods')
-            
-            if g.sub['role'] == db.UserRole.ADVANCED:
-                data['status'] = db.ResvStatus.CONFIRMED
-            else:
-                slot_num = len(data['time_slots'])
-                in_time_window = db.Setting.in_time_window(data['time_slots'])
-                in_time_limit = db.Setting.in_time_limit(data['time_slots'])
+            slot_num = len(data['time_slots'])
+            if slot_num > 1 and 'session_id' not in data:
+                abort(400, message='Missing session_id')
 
-                if g.sub['role'] <= db.UserRole.RESTRICTED:
-                    if slot_num > 1 or not in_time_window or not in_time_limit:
-                        abort(400, message='Access denied')
-                elif g.sub['role'] == db.UserRole.BASIC:
-                    if slot_num == 1 and in_time_window and in_time_limit:
-                        data['status'] = db.ResvStatus.CONFIRMED
-        
-        data['session_id'] = db.Session.current()['session_id']
+            in_time_window = db.Setting.in_time_window(data['time_slots'])
+            in_time_limit = db.Setting.in_time_limit(data['time_slots'])
+            if g.sub['role'] <= db.UserRole.RESTRICTED:
+                if slot_num > 1 or not in_time_window or not in_time_limit:
+                    abort(400, message='Access denied')
+            elif g.sub['role'] == db.UserRole.BASIC:
+                if slot_num == 1 and in_time_window and in_time_limit:
+                    data['status'] = db.ResvStatus.CONFIRMED
 
         # Check other constraints
         if not db.Room.available(data['room_id']):
             abort(400, message='Room not available')
         if not db.Setting.below_max_daily(g.sub['username']):
             abort(400, message='Reservation per day limit reached')
+        if not db.Period.is_comb_of_periods(data['time_slots']):
+            abort(400, message='Time_slots must be combination of periods')
         # There are more constraints, already implemented in the database.
-        # See `schema.sql` and `db.py::init_db`
+        # See `schema.sql`, `schema.py`, and `db.py::init_db`
         # - `start_time` < `end_time`
         # - `start_time` and `end_time` within `session.start_time` and `session.end_time`
         # - `confirmed` and `pending` reservation `time_slots` do not overlap
 
         data['username'] = g.sub['username']
-        try: 
+        try:
             resv_id = db.Reservation.insert(data)
         except Error as err:
             current_app.logger.error(err)
@@ -201,18 +186,23 @@ class Reservation(MethodView):
         if g.sub['role'] <= db.UserRole.BLOCKED:
             abort(403, message='Access denied')
         data = request.json
-        if 'resv_id' not in data or 'slot_id' not in data:
-            abort(400, message='Missing required fields')
-
-        cnx = db.get_cnx(); cursor = cnx.cursor(dictionary=True)
-        try:
-            cursor.execute(f"""
-                DELETE FROM {db.Reservation.TS_TABLE}
-                WHERE resv_id = %s AND slot_id = %s AND username = %s
-            """, (data['resv_id'], data['slot_id'], g.sub['username']))
-            cnx.commit()
-        except:
+        if set(data.keys()) != {'resv_id', 'slot_id'}:
+            abort(400, message='Invalid or missing fields')
+        
+        data['username'] = g.sub['username']
+        try: db.delete(db.Reservation.TS_TABLE, where=data)
+        except Error as err:
+            current_app.logger.error(f'Database error: {err.msg}')
             abort(500, message='Database error')
-        finally:
-            cursor.close()
+
         return {'message': 'Time slot deleted successfully'}, 204
+    
+class TodayResv(MethodView):
+    @auth_required()
+    def get(self):
+        """Get user today's reservations."""
+        try:
+            return db.Reservation.today_resvs(g.sub['username'])
+        except Error as err:
+            current_app.logger.error(f'Database error: {err.msg}')
+            abort(500, message='Database error')
