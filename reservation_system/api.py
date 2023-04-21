@@ -29,18 +29,27 @@ class Reservations(MethodView):
 
 class Periods(MethodView):
     def get(self):
+        # `timedelta` is not JSON serializable
         return db.Period.get(where=request.args.to_dict())
 
 class Notices(MethodView):
     def get(self):
+        # sort by `create_time`, `update_time`
         return db.Notice.get(where=request.args.to_dict())
 
 class Sessions(MethodView):
     def get(self):
+        # `timedelta` is not JSON serializable
         return db.Session.get(where=request.args.to_dict())
-    
+
+class Rooms(MethodView):
+    def get(self):
+        # convert `image` to base64
+        return db.Room.get(where=request.args.to_dict())
+        
 class Users(MethodView):
     def get(self):
+        # avoid exposing sensitive data like `password`
         args = request.args.to_dict()
         db.User.get(where=args)
         return db.select(db.User.TABLE, where=args, columns=('username', 'name'))
@@ -53,7 +62,6 @@ class SimpleGetView(MethodView):
 class      Languages(SimpleGetView): TABLE = db.  Language.TABLE
 class     ResvStatus(SimpleGetView): TABLE = db.ResvStatus.TABLE
 class ResvSecuLevels(SimpleGetView): TABLE = db. SecuLevel.TABLE
-class          Rooms(SimpleGetView): TABLE = db.      Room.TABLE
 class      RoomTypes(SimpleGetView): TABLE = db.  RoomType.TABLE
 class     RoomStatus(SimpleGetView): TABLE = db.RoomStatus.TABLE
 class      UserRoles(SimpleGetView): TABLE = db.  UserRole.TABLE

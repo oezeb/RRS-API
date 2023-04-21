@@ -49,22 +49,23 @@ INSERT INTO {Language.TABLE} (lang_code, name) VALUES
 ('{Language.EN}', 'English');
 
 INSERT INTO {SecuLevel.TABLE} (secu_level, label) VALUES 
-({SecuLevel.PUBLIC}, '公共'), ({SecuLevel.PRIVATE}, '私密');
+({SecuLevel.PUBLIC}, '公共'), 
+({SecuLevel.PRIVATE}, '私密');
 
-INSERT INTO {ResvStatus.TABLE} (status, label) VALUES 
-({ResvStatus.PENDING}, '待定'),
-({ResvStatus.CONFIRMED}, '确认'), 
-({ResvStatus.CANCELLED}, '取消'),
-({ResvStatus.REJECTED}, '拒绝');
+INSERT INTO {ResvStatus.TABLE} (status, label, description) VALUES 
+({ResvStatus.PENDING}, '待定', '等待管理员审核'),
+({ResvStatus.CONFIRMED}, '确认', '预约已有效'),
+({ResvStatus.CANCELLED}, '取消', '预约被取消'),
+({ResvStatus.REJECTED}, '拒绝', '预约被拒绝');
 
-INSERT INTO {RoomStatus.TABLE} (status, label) VALUES
-({RoomStatus.UNAVAILABLE}, '不可用'), 
-({RoomStatus.AVAILABLE}, '可用'  );
+INSERT INTO {RoomStatus.TABLE} (status, label, description) VALUES
+({RoomStatus.UNAVAILABLE}, '不可用', '该房间不可约'),
+({RoomStatus.AVAILABLE}, '可用', NULL);
 
-INSERT INTO {Setting.TABLE} (id, value, label) VALUES
-({Setting.TIME_WINDOW}, '72:00:00', '时间窗口'), 
-({Setting.TIME_LIMIT}, '4:00:00', '时间限'), 
-({Setting.MAX_DAILY}, '3', '每日最多次数');
+INSERT INTO {Setting.TABLE} (id, value, label, description) VALUES
+({Setting.TIME_WINDOW}, '72:00:00', '时间窗口', '从当前时间开始，用户最多可以提前多久预约房间'),
+({Setting.TIME_LIMIT}, '4:00:00', '时间限', '用户预约房间的最长时间'),
+({Setting.MAX_DAILY}, '3', '每日最多次数', '用户每天最多可以预约多少次房间');
 
 INSERT INTO {UserRole.TABLE} (role, label) VALUES 
 ({UserRole.BLOCKED}, '被封锁的'),

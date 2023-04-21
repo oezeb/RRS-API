@@ -614,28 +614,6 @@ def test_time_slot_trigger(app):
     with app.app_context():
         # start_time < end_time and can't overlap
         # time should be within session time
-        logger.debug("add fake sessions")
-        db.delete(db.Session.TABLE)
-        def insert_session(start, end):
-            return db.insert(db.Session.TABLE, [
-                {
-                    'start_time': start,
-                    'end_time': end,
-                    'is_current': 0,
-                    'name': 'fake session',
-                }
-            ])['last_ids'][0]
-        date = datetime.now()
-        sessions = []
-        session_num = 3
-        session_days = 130
-        for i in range(session_num):
-            start = date + timedelta(days=i*365)
-            end = start + timedelta(days=session_days)
-            sessions.append(insert_session(start, end))
-
-        assert len(sessions) == session_num and all(sessions)
-
         logger.debug("add fake room type")
         db.delete(db.RoomType.TABLE)
         room_type = db.insert(db.RoomType.TABLE, [
@@ -663,13 +641,12 @@ def test_time_slot_trigger(app):
         assert len(rooms) == room_num and all(rooms)
         
         logger.debug("add fake reservations with time slots")
-        def insert_resv(username, room_id, session_id, status):
+        def insert_resv(username, room_id, status):
             return db.insert(db.Reservation.RESV_TABLE, [
                 {
                     'username': username,
                     'room_id': room_id,
                     'secu_level': db.SecuLevel.PUBLIC,
-                    'session_id': session_id,
                     'status': status,
                     'title': 'fake title',
                     'note': 'fake note',
@@ -695,91 +672,83 @@ def test_time_slot_trigger(app):
                 assert e.sqlstate == '45000'
         
         resvs = []
-        resv_num_per_session = 20
-        for session_id in sessions:
-            _sessions = db.select(db.Session.TABLE, where={'session_id': session_id})
-            assert len(_sessions) == 1
-            session = _sessions[0]
-            session_start = int(session['start_time'].timestamp())
-            session_end = int(session['end_time'].timestamp())
-            logger.debug(f"session {session_id} start: {session_start}, end: {session_end}")
+        resv_num = 20
+        valid_count = 0 # pending, confirmed
+        ts_num_list = [random.randint(0, 5) for _ in range(resv_num)] # time slot per reservation
+        ts_num = sum(ts_num_list)
+        now = datetime.now()
+        session_start = int(now.timestamp())
+        session_end = int((now + timedelta(days=30)).timestamp())
+        stamp = (session_end - session_start) // ts_num if ts_num else 0
+        stamp_start = session_start
+        logger.debug(f"insert {resv_num} reservations")
+        for i in range(resv_num):
+            resv = {}
+            resv['username'] = random.choice(['restricted', 'basic', 'advanced', 'admin'])
+            resv['room_id'] = random.choice(rooms)
+            status_list = [db.ResvStatus.PENDING, db.ResvStatus.CONFIRMED]
+            if valid_count < resv_num / 2:
+                resv['status'] = random.choice(status_list)
+                valid_count += 1
+            else:
+                resv['status'] = random.choice(status_list + [db.ResvStatus.CANCELLED, db.ResvStatus.REJECTED])
+            logger.debug(f"insert reservation {resv}")
+            resv_id = insert_resv(resv['username'], resv['room_id'], resv['status'])
+            assert resv_id != 0
+            resv['resv_id'] = resv_id    
 
-            valid_count = 0 # pending, confirmed
-            ts_num_list = [random.randint(0, 5) for i in range(resv_num_per_session)] # time slot per reservation
-            ts_num = sum(ts_num_list)
-            stamp = (session_end - session_start) // ts_num if ts_num > 0 else 0
-            stamp_start = session_start
+            resv['time_slots'] = []
+            if ts_num_list[i] == 0:
+                logger.debug(f"insert no time slot for reservation {resv_id}")
+            else:
+                logger.debug(f"insert {ts_num_list[i]} time slots for reservation {resv_id}")
+                for j in range(ts_num_list[i]):
+                    start = random.randint(
+                        stamp_start,
+                        stamp_start+stamp-1
+                    )
+                    end = random.randint(
+                        start+1,
+                        stamp_start+stamp,
+                    )
+                    stamp_start = end
 
-            logger.debug(f"insert {resv_num_per_session} reservations for session {session_id}")
-            for i in range(resv_num_per_session):
-                resv = {}
-                resv['session_id'] = session_id
-                resv['username'] = random.choice(['restricted', 'basic', 'advanced', 'admin'])
-                resv['room_id'] = random.choice(rooms)
-                status_list = [db.ResvStatus.PENDING, db.ResvStatus.CONFIRMED]
-                if valid_count < resv_num_per_session/2:
-                    resv['status'] = random.choice(status_list)
-                    valid_count += 1
-                else:
-                    resv['status'] = random.choice(status_list + [db.ResvStatus.CANCELLED, db.ResvStatus.REJECTED])
-                logger.debug(f"insert reservation {resv}")
-                resv_id = insert_resv(resv['username'], resv['room_id'], resv['session_id'], resv['status'])
-                assert resv_id != 0
-                resv['resv_id'] = resv_id
-                
+                    logger.debug(f"start: {start}, end: {end}")
+                    start = datetime.fromtimestamp(start)
+                    end = datetime.fromtimestamp(end)
 
-                resv['time_slots'] = []
-                if ts_num_list[i] == 0:
-                    logger.debug(f"insert no time slot for reservation {resv_id}")
-                else:
-                    logger.debug(f"insert {ts_num_list[i]} time slots for reservation {resv_id}")
-                    for j in range(ts_num_list[i]):
-                        start = random.randint(
-                            stamp_start,
-                            stamp_start+stamp-1
-                        )
-                        end = random.randint(
-                            start+1,
-                            stamp_start+stamp,
-                        )
-                        stamp_start = end
+                    logger.debug(f"insert time slot {start} - {end}")
+                    ts_id = insert_time_slot(resv_id, resv['username'], start, end)
+                    assert ts_id != 0
+                    ts = {
+                        'slot_id': ts_id,
+                        'start_time': start,
+                        'end_time': end,
+                    }
+                    resv['time_slots'].append(ts)
 
-                        logger.debug(f"start: {start}, end: {end}")
-                        start = datetime.fromtimestamp(start)
-                        end = datetime.fromtimestamp(end)
+                    if resv['status'] in [db.ResvStatus.PENDING, db.ResvStatus.CONFIRMED]:
+                        logger.debug(f"try insert time slot that overlaps with {start} - {end}")
+                        before_start = datetime.fromtimestamp(random.randint(
+                            session_start,
+                            ts['start_time'].timestamp()-1,
+                        ))
+                        after_end = datetime.fromtimestamp(random.randint(
+                            ts['end_time'].timestamp()+1,
+                            session_end,
+                        ))
+                        between_start_end = datetime.fromtimestamp(random.randint(
+                            ts['start_time'].timestamp()+1,
+                            ts['end_time'].timestamp()-1,
+                        ))
 
-                        logger.debug(f"insert time slot {start} - {end}")
-                        ts_id = insert_time_slot(resv_id, resv['username'], start, end)
-                        assert ts_id != 0
-                        ts = {
-                            'slot_id': ts_id,
-                            'start_time': start,
-                            'end_time': end,
-                        }
-                        resv['time_slots'].append(ts)
+                        for s in [ before_start, start, between_start_end ]:
+                            for e in [ between_start_end, end, after_end ]:
+                                try_insert_time_slot(resv_id, resv['username'], s, e)
 
-                        if resv['status'] in [db.ResvStatus.PENDING, db.ResvStatus.CONFIRMED]:
-                            logger.debug(f"try insert time slot that overlaps with {start} - {end}")
-                            before_start = datetime.fromtimestamp(random.randint(
-                                session_start,
-                                ts['start_time'].timestamp()-1,
-                            ))
-                            after_end = datetime.fromtimestamp(random.randint(
-                                ts['end_time'].timestamp()+1,
-                                session_end,
-                            ))
-                            between_start_end = datetime.fromtimestamp(random.randint(
-                                ts['start_time'].timestamp()+1,
-                                ts['end_time'].timestamp()-1,
-                            ))
+            resvs.append(resv)
 
-                            for s in [ before_start, start, between_start_end ]:
-                                for e in [ between_start_end, end, after_end ]:
-                                    try_insert_time_slot(resv_id, resv['username'], s, e)
-
-                resvs.append(resv)
-
-        assert len(resvs) == session_num * resv_num_per_session and all(resvs)
+        assert len(resvs) == resv_num and all(resvs)
         
 def test_settings_util(app):
     with app.app_context():

@@ -6,6 +6,7 @@ import click
 import dateutil.parser
 import logging
 import os
+import base64
 
 import mysql.connector
 from flask import current_app, g
@@ -157,7 +158,14 @@ class Reservation(schema.Reservation):
         date = where.pop('date', None)
         if date:
             where['DATE(start_time)'] = date
-        return select(Reservation.TABLE, where, order_by=['start_time', 'end_time'])
+        res = select(Reservation.TABLE, where, order_by=['start_time', 'end_time'])
+        for r in res:
+            r['start_time'] = r['start_time'].isoformat(' ')
+            r['end_time'] = r['end_time'].isoformat(' ')
+            r['create_time'] = r['create_time'].isoformat(' ')
+            if r['update_time']:
+                r['update_time'] = r['update_time'].isoformat(' ')
+        return res
     
     @staticmethod
     def insert(data):
@@ -184,7 +192,7 @@ class Reservation(schema.Reservation):
         return resv_id
     
     @staticmethod
-    def update(resv_id, username, slot_id=None, **data):
+    def update(resv_id, username, data, slot_id=None):
         table = Reservation.RESV_TABLE
         where = {'resv_id': resv_id, 'username': username}
         if slot_id:
@@ -227,6 +235,9 @@ class Session(schema.Session):
     def current():
         """Get the current session."""
         res = select(Session.TABLE, {'is_current': 1}, order_by=['start_time', 'end_time'])
+        for r in res:
+            r['start_time'] = r['start_time'].isoformat(' ')
+            r['end_time'] = r['end_time'].isoformat(' ')
         return res[0] if res else None
     
     @staticmethod
@@ -234,6 +245,15 @@ class Session(schema.Session):
         return select(Session.TABLE, where, order_by=['start_time', 'end_time'])
     
 class Room(schema.Room):
+    @staticmethod
+    def get(where=None):
+        res = select(Room.TABLE, where, order_by=['room_id'])
+        for r in res:
+            # BLOB image to base64 string
+            if r['image']:
+                r['image'] = base64.b64encode(r['image']).decode('utf-8')
+        return res
+    
     @staticmethod
     def available(room_id):
         # return select(Room.TABLE, {'room_id': room_id})[0]['status'] == RoomStatus.AVAILABLE
@@ -327,12 +347,6 @@ def select(
     cursor.execute(sql, (*where.values(),) if where is not None and where != {} else None)
     data_list = cursor.fetchall()
     
-    # for data in data_list:
-    #     for key in data:
-    #         if isinstance(data[key], (datetime, time)): 
-    #             data[key] =  data[key].isoformat()
-    #         elif isinstance(data[key], timedelta):
-    #             data[key] = str(data[key])
     cnx.commit(); cursor.close()
     return data_list
 

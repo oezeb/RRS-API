@@ -162,7 +162,7 @@ class Reservation(MethodView):
         if g.sub['role'] <= db.UserRole.BLOCKED:
             abort(403, message='Access denied')
         data = request.json
-        if not data['resv_id'] or not data['data']:
+        if 'resv_id' not in data or 'data' not in data:
             abort(400, message='Missing required fields')
         if 'status' in data['data'] and data['data']['status'] != db.ResvStatus.CANCELLED:
             abort(400, message='Invalid status')
@@ -170,7 +170,7 @@ class Reservation(MethodView):
             abort(400, message='Invalid fields')
         
         try:
-            db.Reservation.update(data['resv_id'], g.sub['username'], data['data'])
+            db.Reservation.update(data['resv_id'], g.sub['username'], data=data['data'])
         except Error as err:
             abort(500, message=f'Database error: {err.msg}')
 

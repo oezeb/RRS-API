@@ -143,6 +143,7 @@ CREATE TABLE rooms
    status               INTEGER                        NOT NULL,
    name                 VARCHAR(50)                    NOT NULL,
    capacity             INTEGER                        NOT NULL,
+   image                BLOB                           NULL,
    PRIMARY KEY (room_id),
    FOREIGN KEY (status) 
       REFERENCES room_status (status) 
