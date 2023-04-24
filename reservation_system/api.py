@@ -27,6 +27,12 @@ class Reservations(MethodView):
         args = request.args.to_dict()
         return db.Reservation.get(where=args)
 
+class Users(MethodView):
+    def get(self):
+        # avoid exposing sensitive data like `password`
+        args = request.args.to_dict()
+        return db.select(db.User.TABLE, where=args, columns=('username', 'name'))
+
 class Periods(MethodView):
     def get(self):
         # `timedelta` is not JSON serializable
@@ -47,22 +53,15 @@ class Rooms(MethodView):
         # convert `image` to base64
         return db.Room.get(where=request.args.to_dict())
         
-class Users(MethodView):
-    def get(self):
-        # avoid exposing sensitive data like `password`
-        args = request.args.to_dict()
-        db.User.get(where=args)
-        return db.select(db.User.TABLE, where=args, columns=('username', 'name'))
-
-class SimpleGetView(MethodView):
+class Get(MethodView):
     def get(self):
         args = request.args.to_dict()
-        return db.select(self.TABLE, where=args)
+        return db.select(self.table, where=args)
 
-class      Languages(SimpleGetView): TABLE = db.  Language.TABLE
-class     ResvStatus(SimpleGetView): TABLE = db.ResvStatus.TABLE
-class ResvSecuLevels(SimpleGetView): TABLE = db. SecuLevel.TABLE
-class      RoomTypes(SimpleGetView): TABLE = db.  RoomType.TABLE
-class     RoomStatus(SimpleGetView): TABLE = db.RoomStatus.TABLE
-class      UserRoles(SimpleGetView): TABLE = db.  UserRole.TABLE
-class       Settings(SimpleGetView): TABLE = db.   Setting.TABLE
+class      RoomTypes(Get): table = db.  RoomType.TABLE
+class      Languages(Get): table = db.  Language.TABLE
+class     ResvStatus(Get): table = db.ResvStatus.TABLE
+class ResvSecuLevels(Get): table = db. SecuLevel.TABLE
+class     RoomStatus(Get): table = db.RoomStatus.TABLE
+class      UserRoles(Get): table = db.  UserRole.TABLE
+class       Settings(Get): table = db.   Setting.TABLE

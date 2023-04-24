@@ -97,7 +97,7 @@ class Setting(schema.Setting):
         hours = seconds // 3600
         minutes = (seconds % 3600) // 60
         seconds = seconds % 60
-        return "%d:%02d:%02d" % (hours, minutes, seconds)
+        return "%02d:%02d:%02d" % (hours, minutes, seconds)
     
     @staticmethod
     def str_to_timedelta(s: str) -> timedelta:
@@ -171,6 +171,9 @@ class Reservation(schema.Reservation):
     def insert(data):
         """`data` must contain `time_slots` as a list of dicts"""
         time_slots = data.pop('time_slots')
+        if not time_slots:
+            raise ValueError("No time slots provided")
+        
         cnx = get_cnx(); cursor = cnx.cursor()
         try:
             cursor.execute(f"""
@@ -253,6 +256,21 @@ class Room(schema.Room):
             if r['image']:
                 r['image'] = base64.b64encode(r['image']).decode('utf-8')
         return res
+    
+    @staticmethod
+    def insert(data_list):
+        for data in data_list:
+            if 'image' in data and data['image'] is not None:
+                data['image'] = base64.b64decode(data['image'])
+        return insert(Room.TABLE, data_list)
+
+    @staticmethod
+    def update_many(data_list):
+        for data in data_list:
+            if 'image' in data['data'] and data['data']['image'] is not None:
+                data['data']['image'] = base64.b64decode(data['data']['image'])
+                print(data['data']['image'])
+        return update_many(Room.TABLE, data_list)
     
     @staticmethod
     def available(room_id):
@@ -353,31 +371,19 @@ def select(
 def insert(table, data_list):
     """If a table has auto increment primary key, it will return the last inserted ids"""
     cnx = get_cnx(); cursor = cnx.cursor()
-    last_ids = []
-    affected_rows = []
+    lastrowid = []
+    rowcount = []
     for data in data_list:
         cursor.execute(f"""
             INSERT INTO {table} ({', '.join(data.keys())}) 
             VALUES ({', '.join(['%s']*len(data))});
         """, (*data.values(),))
-        last_ids.append(cursor.lastrowid)
-        affected_rows.append(cursor.rowcount)
+        lastrowid.append(cursor.lastrowid)
+        rowcount.append(cursor.rowcount)
     cnx.commit(); cursor.close()
-    return {"last_ids": last_ids, "affected_rows": affected_rows}
+    return {"lastrowid": lastrowid, "rowcount": rowcount}
 
-def delete(table, where=None):
-    cnx = get_cnx(); cursor = cnx.cursor()
-    if where is not None and where != {}:
-        cursor.execute(f"""
-            DELETE FROM {table} 
-            WHERE {' AND '.join([f'{name} = %s' for name in where])};
-        """, (*where.values(),))
-    else: cursor.execute(f"DELETE FROM {table};")
-    cnx.commit(); cursor.close()
-    return cursor.rowcount
-
-def update(table, data, where=None):
-    cnx = get_cnx(); cursor = cnx.cursor()
+def _update(cursor, table, data, where=None):
     if  where is not None and where != {}:
         cursor.execute(f"""
             UPDATE {table} SET {', '.join([f'{key} = %s' for key in data])}
@@ -387,5 +393,44 @@ def update(table, data, where=None):
         cursor.execute(f"""
             UPDATE {table} SET {', '.join([f'{key} = %s' for key in data])};
         """, (*data.values(),))
+    return {"rowcount": cursor.rowcount}
+
+def update(table, data, where=None):
+    cnx = get_cnx(); cursor = cnx.cursor()
+    rowcount = _update(cursor, table, data, where)
     cnx.commit(); cursor.close()
-    return cursor.rowcount
+    return rowcount
+
+def update_many(table, data_list):
+    cnx = get_cnx(); cursor = cnx.cursor()
+    rowcount = []
+    for data in data_list:
+        where = data['where'] if 'where' in data else None
+        rowcount.append(_update(cursor, table, data['data'], where)['rowcount'])
+
+    cnx.commit(); cursor.close()
+    return {"rowcount": rowcount}
+
+def _delete(cursor, table, where=None):
+    if where is not None and where != {}:
+        cursor.execute(f"""
+            DELETE FROM {table} 
+            WHERE {' AND '.join([f'{name} = %s' for name in where])};
+        """, (*where.values(),))
+    else: cursor.execute(f"DELETE FROM {table};")
+    return {"rowcount": cursor.rowcount}
+
+def delete(table, where=None):
+    cnx = get_cnx(); cursor = cnx.cursor()
+    rowcount = _delete(cursor, table, where)
+    cnx.commit(); cursor.close()
+    return rowcount
+
+def delete_many(table, where_list):
+    cnx = get_cnx(); cursor = cnx.cursor()
+    rowcount = []
+    for where in where_list:
+        rowcount.append(_delete(cursor, table, where)['rowcount'])
+
+    cnx.commit(); cursor.close()
+    return {"rowcount": rowcount}

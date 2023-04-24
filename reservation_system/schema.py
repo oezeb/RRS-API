@@ -159,7 +159,7 @@ ON {Setting.TABLE} FOR EACH ROW BEGIN
         OR NEW.id = {Setting.TIME_LIMIT}
     THEN
         IF NEW.value NOT 
-            REGEXP '^[0-9]+:[0-9][0-9]:[0-9][0-9]$'
+            REGEXP '^[0-9]+:[0-9][0-9]?:[0-9][0-9]?$'
         THEN
             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT =
             'Time format must be HH:MM:SS.';
@@ -370,6 +370,46 @@ UPDATE ON {Reservation.TS_TABLE} FOR EACH ROW BEGIN
         IF i = 0 THEN
             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 
             'Time slot is not within session time.';
+        END IF;
+    END IF;
+END;
+"""
+
+# ==============================================================
+# Reservations Triggers
+# ==============================================================
+# - updating `room_id` or `session_id` can cause a lot of
+#  time slot conflicts
+# - `status` can be updated only:
+#   - from `pending` to `cancelled`or `confirmed` or `rejected`
+#   - from `confirmed` to `cancelled`
+RESERVATION_UPDATE_TRIGGER = f"""
+DROP TRIGGER IF EXISTS {Reservation.RESV_TABLE}_update_trigger;
+CREATE TRIGGER {Reservation.RESV_TABLE}_update_trigger BEFORE
+UPDATE ON {Reservation.RESV_TABLE} FOR EACH ROW 
+BEGIN
+    DECLARE msg TEXT;
+
+    IF NEW.room_id <> OLD.room_id 
+        OR NEW.session_id <> OLD.session_id 
+    THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 
+        'Updating room_id or session_id is not allowed';
+    END IF;
+
+    IF NEW.status <> OLD.status 
+    THEN
+        IF OLD.status = {ResvStatus.PENDING} 
+            AND NEW.status IN ({ResvStatus.CANCELLED}, 
+                {ResvStatus.CONFIRMED}, {ResvStatus.REJECTED}) 
+        THEN SET msg = '';
+        ELSEIF OLD.status = {ResvStatus.CONFIRMED} AND
+            NEW.status = {ResvStatus.CANCELLED} 
+        THEN SET msg = '';
+        ELSE
+            SET msg = CONCAT('Updating status from ',
+                OLD.status, ' to ', NEW.status, ' is not allowed');
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = msg;
         END IF;
     END IF;
 END;

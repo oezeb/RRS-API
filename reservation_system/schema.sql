@@ -1,3 +1,5 @@
+SET SQL_MODE="NO_AUTO_VALUE_ON_ZERO";
+
 DROP TABLE IF EXISTS            resv_trans;
 DROP TABLE IF EXISTS     resv_status_trans;
 DROP TABLE IF EXISTS resv_secu_level_trans;
@@ -30,11 +32,11 @@ DROP TABLE IF EXISTS              settings;
 CREATE TABLE settings
 (
    
-   id                   INTEGER                        NOT NULL,
+   id                   INTEGER AUTO_INCREMENT         NOT NULL,
    value                VARCHAR(255)                   NULL,
    label                VARCHAR(50)                    NOT NULL,
    description          VARCHAR(200)                   NULL,
-   PRIMARY KEY (id)
+   CONSTRAINT settings_pk PRIMARY KEY (id)
 );
 
 /*==============================================================*/
@@ -45,7 +47,7 @@ CREATE TABLE periods
    period_id            INTEGER AUTO_INCREMENT         NOT NULL,
    start_time           TIME                           NOT NULL,
    end_time             TIME                           NOT NULL,
-   PRIMARY KEY (period_id),
+   CONSTRAINT periods_pk PRIMARY KEY (period_id),
    CHECK (start_time < end_time)
 );
 
@@ -54,10 +56,10 @@ CREATE TABLE periods
 /*==============================================================*/
 CREATE TABLE user_roles 
 (
-   role                 INTEGER                        NOT NULL,
+   role                 INTEGER AUTO_INCREMENT         NOT NULL,
    label                VARCHAR(50)                    NOT NULL,
    description          VARCHAR(200)                   NULL,
-   PRIMARY KEY (role)
+   CONSTRAINT user_roles_pk PRIMARY KEY (role)
 );
 
 /*==============================================================*/
@@ -70,10 +72,11 @@ CREATE TABLE users
    password             VARCHAR(1024)                  NOT NULL,
    role                 INTEGER                        NOT NULL,
    email                VARCHAR(50)                    NULL,
-   PRIMARY KEY (username),
+   CONSTRAINT users_pk PRIMARY KEY (username),
+   CONSTRAINT users_users_roles_fk
    FOREIGN KEY (role) 
       REFERENCES user_roles (role) 
-      ON UPDATE CASCADE ON DELETE CASCADE
+      ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 /*==============================================================*/
@@ -87,10 +90,11 @@ CREATE TABLE notices
    content              TEXT                           NOT NULL,
    create_time          TIMESTAMP                      NOT NULL DEFAULT CURRENT_TIMESTAMP,
    update_time          TIMESTAMP                      NULL ON UPDATE CURRENT_TIMESTAMP,
-   PRIMARY KEY (username, notice_id),
+   CONSTRAINT notices_pk PRIMARY KEY (username, notice_id),
+   CONSTRAINT notices_users_fk
    FOREIGN KEY (username) 
       REFERENCES users (username)
-      ON UPDATE CASCADE ON DELETE CASCADE,
+      ON UPDATE CASCADE ON DELETE RESTRICT,
    CHECK (create_time <= update_time)
 );
 /* Make notice_id auto increment */
@@ -107,7 +111,7 @@ CREATE TABLE sessions
    start_time           TIMESTAMP                      NOT NULL,
    end_time             TIMESTAMP                      NOT NULL,
    is_current           BIT                            NULL,
-   PRIMARY KEY (session_id),
+   CONSTRAINT sessions_pk PRIMARY KEY (session_id),
    CHECK (start_time < end_time)
 );
 
@@ -116,10 +120,10 @@ CREATE TABLE sessions
 /*==============================================================*/
 CREATE TABLE room_status 
 (
-   status               INTEGER                        NOT NULL,
+   status               INTEGER AUTO_INCREMENT         NOT NULL,
    label                VARCHAR(50)                    NOT NULL,
    description          VARCHAR(200)                   NULL,
-   PRIMARY KEY (status)
+   CONSTRAINT room_status_pk PRIMARY KEY (status)
 );
 
 /*==============================================================*/
@@ -130,7 +134,7 @@ CREATE TABLE room_types
    type                 INTEGER AUTO_INCREMENT         NOT NULL,
    label                VARCHAR(50)                    NOT NULL,
    description          VARCHAR(200)                   NULL,
-   PRIMARY KEY (type)
+   CONSTRAINT room_types_pk PRIMARY KEY (type)
 );
 
 /*==============================================================*/
@@ -139,18 +143,20 @@ CREATE TABLE room_types
 CREATE TABLE rooms 
 (
    room_id              INTEGER AUTO_INCREMENT         NOT NULL,
-   type                 INTEGER                        NOT NULL,
    status               INTEGER                        NOT NULL,
    name                 VARCHAR(50)                    NOT NULL,
    capacity             INTEGER                        NOT NULL,
+   type                 INTEGER                        NOT NULL,
    image                BLOB                           NULL,
-   PRIMARY KEY (room_id),
+   CONSTRAINT rooms_pk PRIMARY KEY (room_id),
+   CONSTRAINT rooms_room_status_fk
    FOREIGN KEY (status) 
       REFERENCES room_status (status) 
-      ON UPDATE CASCADE ON DELETE CASCADE,
+      ON UPDATE CASCADE ON DELETE RESTRICT,
+   CONSTRAINT rooms_room_types_fk
    FOREIGN KEY (type) 
       REFERENCES room_types(type) 
-      ON UPDATE CASCADE ON DELETE CASCADE
+      ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 /*==============================================================*/
@@ -158,10 +164,10 @@ CREATE TABLE rooms
 /*==============================================================*/
 CREATE TABLE resv_secu_levels 
 (
-   secu_level           INTEGER                        NOT NULL,
+   secu_level           INTEGER AUTO_INCREMENT         NOT NULL,
    label                VARCHAR(50)                    NOT NULL,
    description          VARCHAR(200)                   NULL,
-   PRIMARY KEY (secu_level)
+   CONSTRAINT resv_secu_levels_pk PRIMARY KEY (secu_level)
 );
 
 /*==============================================================*/
@@ -169,10 +175,10 @@ CREATE TABLE resv_secu_levels
 /*==============================================================*/
 CREATE TABLE resv_status 
 (
-   status               INTEGER                        NOT NULL,
+   status               INTEGER  AUTO_INCREMENT        NOT NULL,
    label                VARCHAR(50)                    NOT NULL,
    description          VARCHAR(200)                   NULL,
-   PRIMARY KEY (status)
+   CONSTRAINT resv_status_pk PRIMARY KEY (status)
 );
 
 /*==============================================================*/
@@ -190,22 +196,27 @@ CREATE TABLE reservations
    note                 VARCHAR(100)                   NULL,
    create_time          TIMESTAMP                      NOT NULL DEFAULT CURRENT_TIMESTAMP,
    update_time          TIMESTAMP                      NULL ON UPDATE CURRENT_TIMESTAMP,
-   PRIMARY KEY (username, resv_id),
+   CONSTRAINT reservations_pk PRIMARY KEY (username, resv_id),
+   CONSTRAINT reservations_rooms_fk
    FOREIGN KEY (room_id) 
       REFERENCES rooms(room_id) 
-      ON UPDATE CASCADE ON DELETE CASCADE,
+      ON UPDATE CASCADE ON DELETE RESTRICT,
+   CONSTRAINT reservations_resv_secu_levels_fk
    FOREIGN KEY (secu_level) 
       REFERENCES resv_secu_levels(secu_level) 
-      ON UPDATE CASCADE ON DELETE CASCADE,
+      ON UPDATE CASCADE ON DELETE RESTRICT,
+   CONSTRAINT reservations_sessions_fk
    FOREIGN KEY (session_id)
       REFERENCES sessions(session_id) 
-      ON UPDATE CASCADE ON DELETE CASCADE,
+      ON UPDATE CASCADE ON DELETE RESTRICT,
+   CONSTRAINT reservations_resv_status_fk
    FOREIGN KEY (status) 
       REFERENCES resv_status(status) 
-      ON UPDATE CASCADE ON DELETE CASCADE,
+      ON UPDATE CASCADE ON DELETE RESTRICT,
+   CONSTRAINT reservations_users_fk
    FOREIGN KEY (username) 
       REFERENCES users(username) 
-      ON UPDATE CASCADE ON DELETE CASCADE,
+      ON UPDATE CASCADE ON DELETE RESTRICT,
    CHECK (create_time <= update_time)
 );
 /* Make resv_id auto-increment */
@@ -222,10 +233,11 @@ CREATE TABLE time_slots
    slot_id              INTEGER                        NOT NULL,
    start_time           TIMESTAMP                      NOT NULL,
    end_time             TIMESTAMP                      NOT NULL,
-   PRIMARY KEY (username, resv_id, slot_id),
+   CONSTRAINT time_slots_pk PRIMARY KEY (username, resv_id, slot_id),
+   CONSTRAINT time_slots_reservations_fk
    FOREIGN KEY (username, resv_id) 
       REFERENCES reservations (username, resv_id) 
-      ON UPDATE CASCADE ON DELETE CASCADE,
+      ON UPDATE CASCADE ON DELETE RESTRICT,
    CHECK (start_time < end_time)
 );
 /* Make slot_id auto-increment */
@@ -239,7 +251,7 @@ CREATE TABLE languages
 (
    lang_code            VARCHAR(35)                    NOT NULL,
    name                 VARCHAR(50)                    NOT NULL,
-   PRIMARY KEY (lang_code)
+   CONSTRAINT languages_pk PRIMARY KEY (lang_code)
 );
 
 /*==============================================================*/
@@ -251,13 +263,16 @@ CREATE TABLE setting_trans
    id                   INTEGER                        NOT NULL,
    label                VARCHAR(50)                    NOT NULL,
    description          VARCHAR(200)                   NULL,
+   CONSTRAINT setting_trans_pk
    PRIMARY KEY (lang_code, id),
+   CONSTRAINT setting_trans_languages_fk
    FOREIGN KEY (lang_code)
       REFERENCES languages (lang_code)
-      ON UPDATE CASCADE ON DELETE CASCADE,
+      ON UPDATE CASCADE ON DELETE RESTRICT,
+   CONSTRAINT setting_trans_settings_fk
    FOREIGN KEY (id)
       REFERENCES settings (id)
-      ON UPDATE CASCADE ON DELETE CASCADE
+      ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 /*==============================================================*/
@@ -269,13 +284,16 @@ CREATE TABLE user_role_trans
    lang_code            VARCHAR(35)                    NOT NULL,
    label                VARCHAR(50)                    NOT NULL,
    description          VARCHAR(200)                   NULL,
+   CONSTRAINT user_role_trans_pk
    PRIMARY KEY (role, lang_code),
-   FOREIGN KEY (role) 
-      REFERENCES user_roles (role) 
-      ON UPDATE CASCADE ON DELETE CASCADE,
+   CONSTRAINT user_role_trans_languages_fk
    FOREIGN KEY (lang_code) 
       REFERENCES languages(lang_code) 
-      ON UPDATE CASCADE ON DELETE CASCADE
+      ON UPDATE CASCADE ON DELETE RESTRICT,
+   CONSTRAINT user_role_trans_user_roles_fk
+   FOREIGN KEY (role) 
+      REFERENCES user_roles (role) 
+      ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 /*==============================================================*/
@@ -286,13 +304,16 @@ CREATE TABLE user_trans
    username             VARCHAR(50)                    NOT NULL,
    lang_code            VARCHAR(35)                    NOT NULL,
    name                 VARCHAR(50)                    NOT NULL,
+   CONSTRAINT user_trans_pk
    PRIMARY KEY (username, lang_code),
-   FOREIGN KEY (username) 
-      REFERENCES users(username) 
-      ON UPDATE CASCADE ON DELETE CASCADE,
+   CONSTRAINT user_trans_languages_fk
    FOREIGN KEY (lang_code) 
       REFERENCES languages(lang_code) 
-      ON UPDATE CASCADE ON DELETE CASCADE
+      ON UPDATE CASCADE ON DELETE RESTRICT,
+   CONSTRAINT user_trans_users_fk
+   FOREIGN KEY (username) 
+      REFERENCES users(username) 
+      ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 /*==============================================================*/
@@ -305,13 +326,16 @@ CREATE TABLE notice_trans
    lang_code            VARCHAR(35)                    NOT NULL,
    title                VARCHAR(100)                   NOT NULL,
    content              TEXT                           NOT NULL,
+   CONSTRAINT notice_trans_pk
    PRIMARY KEY (username, notice_id, lang_code),
-   FOREIGN KEY (username, notice_id)
-      REFERENCES notices (username, notice_id)
-      ON UPDATE CASCADE ON DELETE CASCADE,
+   CONSTRAINT notice_trans_languages_fk
    FOREIGN KEY (lang_code) 
       REFERENCES languages (lang_code)
-      ON UPDATE CASCADE ON DELETE CASCADE
+      ON UPDATE CASCADE ON DELETE RESTRICT,
+   CONSTRAINT notice_trans_notices_fk
+   FOREIGN KEY (username, notice_id)
+      REFERENCES notices (username, notice_id)
+      ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 /*==============================================================*/
@@ -322,13 +346,16 @@ CREATE TABLE session_trans
    lang_code            VARCHAR(35)                    NOT NULL,
    session_id           INTEGER                        NOT NULL,
    name                 VARCHAR(50)                    NOT NULL,
+   CONSTRAINT session_trans_pk
    PRIMARY KEY (lang_code, session_id),
+   CONSTRAINT session_trans_languages_fk
    FOREIGN KEY (lang_code) 
       REFERENCES languages(lang_code) 
-      ON UPDATE CASCADE ON DELETE CASCADE,
+      ON UPDATE CASCADE ON DELETE RESTRICT,
+   CONSTRAINT session_trans_sessions_fk
    FOREIGN KEY (session_id) 
       REFERENCES sessions(session_id) 
-      ON UPDATE CASCADE ON DELETE CASCADE
+      ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 /*==============================================================*/
@@ -340,13 +367,16 @@ CREATE TABLE room_status_trans
    lang_code            VARCHAR(35)                    NOT NULL,
    label                VARCHAR(50)                    NOT NULL,
    description          VARCHAR(200)                   NULL,
+   CONSTRAINT room_status_trans_pk
    PRIMARY KEY (status, lang_code),
-   FOREIGN KEY (status) 
-      REFERENCES room_status (status) 
-      ON UPDATE CASCADE ON DELETE CASCADE,
+   CONSTRAINT room_status_trans_languages_fk
    FOREIGN KEY (lang_code) 
       REFERENCES languages(lang_code) 
-      ON UPDATE CASCADE ON DELETE CASCADE
+      ON UPDATE CASCADE ON DELETE RESTRICT,
+   CONSTRAINT room_status_trans_room_status_fk
+   FOREIGN KEY (status) 
+      REFERENCES room_status (status) 
+      ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 /*==============================================================*/
@@ -358,13 +388,16 @@ CREATE TABLE room_type_trans
    type                 INTEGER                        NOT NULL,
    label                VARCHAR(50)                    NOT NULL,
    description          VARCHAR(200)                   NULL,
+   CONSTRAINT room_type_trans_pk
    PRIMARY KEY (lang_code, type),
+   CONSTRAINT room_type_trans_languages_fk
    FOREIGN KEY (lang_code) 
       REFERENCES languages(lang_code) 
-      ON UPDATE CASCADE ON DELETE CASCADE,
+      ON UPDATE CASCADE ON DELETE RESTRICT,
+   CONSTRAINT room_type_trans_room_types_fk
    FOREIGN KEY (type) 
       REFERENCES room_types (type) 
-      ON UPDATE CASCADE ON DELETE CASCADE
+      ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 /*==============================================================*/
@@ -375,13 +408,16 @@ CREATE TABLE room_trans
    lang_code            VARCHAR(35)                    NOT NULL,
    room_id              INTEGER                        NOT NULL,
    name                 VARCHAR(50)                    NOT NULL,
+   CONSTRAINT room_trans_pk
    PRIMARY KEY (lang_code, room_id),
+   CONSTRAINT room_trans_languages_fk
    FOREIGN KEY (lang_code) 
       REFERENCES languages(lang_code) 
-      ON UPDATE CASCADE ON DELETE CASCADE,
+      ON UPDATE CASCADE ON DELETE RESTRICT,
+   CONSTRAINT room_trans_rooms_fk
    FOREIGN KEY (room_id) 
       REFERENCES rooms(room_id) 
-      ON UPDATE CASCADE ON DELETE CASCADE
+      ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 /*==============================================================*/
@@ -393,13 +429,16 @@ CREATE TABLE resv_secu_level_trans
    secu_level           INTEGER                        NOT NULL,
    label                VARCHAR(50)                    NOT NULL,
    description          VARCHAR(200)                   NULL,
+   CONSTRAINT resv_secu_level_trans_pk
    PRIMARY KEY (lang_code, secu_level),
+   CONSTRAINT resv_secu_level_trans_languages_fk
    FOREIGN KEY (lang_code) 
       REFERENCES languages(lang_code) 
-      ON UPDATE CASCADE ON DELETE CASCADE,
+      ON UPDATE CASCADE ON DELETE RESTRICT,
+   CONSTRAINT resv_secu_level_trans_resv_secu_levels_fk
    FOREIGN KEY (secu_level) 
       REFERENCES resv_secu_levels (secu_level) 
-      ON UPDATE CASCADE ON DELETE CASCADE
+      ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 /*==============================================================*/
@@ -411,13 +450,16 @@ CREATE TABLE resv_status_trans
    status               INTEGER                        NOT NULL,
    label                VARCHAR(50)                    NOT NULL,
    description          VARCHAR(200)                   NULL,
+   CONSTRAINT resv_status_trans_pk
    PRIMARY KEY (lang_code, status),
+   CONSTRAINT resv_status_trans_languages_fk
    FOREIGN KEY (lang_code) 
       REFERENCES languages   (lang_code) 
-      ON UPDATE CASCADE ON DELETE CASCADE,
+      ON UPDATE CASCADE ON DELETE RESTRICT,
+   CONSTRAINT resv_status_trans_resv_status_fk
    FOREIGN KEY (status) 
       REFERENCES resv_status (status) 
-      ON UPDATE CASCADE ON DELETE CASCADE
+      ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 /*==============================================================*/
@@ -430,13 +472,16 @@ CREATE TABLE resv_trans
    resv_id              INTEGER                        NOT NULL,
    title                VARCHAR(50)                    NOT NULL,
    note                 VARCHAR(100)                   NULL,
+   CONSTRAINT resv_trans_pk
    PRIMARY KEY (username, lang_code, resv_id),
+   CONSTRAINT resv_trans_languages_fk
    FOREIGN KEY (lang_code) 
       REFERENCES languages(lang_code) 
-      ON UPDATE CASCADE ON DELETE CASCADE,
+      ON UPDATE CASCADE ON DELETE RESTRICT,
+   CONSTRAINT resv_trans_reservations_fk
    FOREIGN KEY (username, resv_id) 
       REFERENCES reservations (username, resv_id) 
-      ON UPDATE CASCADE ON DELETE CASCADE
+      ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 /*--------------------------------------------------------------*/

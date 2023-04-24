@@ -72,7 +72,7 @@ class Reservation(MethodView):
 
         return db.Reservation.get(where)
     
-    @auth_required()
+    @auth_required(role=db.UserRole.RESTRICTED)
     def post(self):
         """
         Create a new reservation.
@@ -95,8 +95,6 @@ class Reservation(MethodView):
                 1 BASIC     |any       |any           |NO           |0 PENDING  |ADVANCED
                 2 ADVANCED  |any       |any           |any          |1 CONFRIMED|any
         """
-        if g.sub['role'] <= db.UserRole.BLOCKED:
-            abort(403, message='Access denied')
         data = request.json
 
         # Check required fields
@@ -159,8 +157,6 @@ class Reservation(MethodView):
             - `data`: contains the fields to be updated. `title`, `note`, `status`
                 - `status` if exists=CANCELLED
         """
-        if g.sub['role'] <= db.UserRole.BLOCKED:
-            abort(403, message='Access denied')
         data = request.json
         if 'resv_id' not in data or 'data' not in data:
             abort(400, message='Missing required fields')

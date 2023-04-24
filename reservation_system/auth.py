@@ -104,7 +104,7 @@ class Register(MethodView):
         
         return {'message': 'User created successfully'}, 201
 
-def auth_required(role=0):
+def auth_required(role: int=None):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -122,7 +122,7 @@ def auth_required(role=0):
                 abort(500, message='Internal server error')
 
             sub = payload['sub']
-            if sub['role'] < role:
+            if role is not None and sub['role'] < role:
                 abort(403, message='Access denied')
             g.sub = sub
             return func(*args, **kwargs)

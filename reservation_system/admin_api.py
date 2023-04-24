@@ -41,23 +41,27 @@ class Patch(AdminView):
     # `self.patch_required` must be set in subclass
     #     - it is a list of required columns for `where`
     def patch(self):
-        data = request.json['data']
-        where = request.json['where']
-        for col in self.patch_required:
-            if col not in where:
-                abort(400, f'{col} is required')
-        return db.update(self.table, data, where)
+        """`request.json` must be a list of objects with `data` and `where`"""
+        print("json", request.json)
+        for data in request.json:
+            where = data['where']
+            for col in self.patch_required:
+                if col not in where:
+                    abort(400, f'{col} is required')
+        return db.update_many(self.table, request.json)
+
 
 class Delete(AdminView):
     # `self.table` must be set in subclass
     # `self.patch_required` must be set in subclass
     #     - it is a list of required columns for `where`
     def delete(self):
-        where = request.json
-        for col in self.delete_required:
-            if col not in where:
-                abort(400, f'{col} is required')
-        return db.delete(self.table, where)
+        """`request.json` must be a list of objects representing `where`"""
+        for where in request.json:
+            for col in self.delete_required:
+                if col not in where:
+                    abort(400, f'{col} is required')
+        return db.delete_many(self.table, request.json)
     
 # 
 class Reservations(AdminView):
@@ -105,7 +109,16 @@ class Users(AdminView):
         if 'username' not in where:
             abort(400, 'username is required')
         return db.update(db.User.TABLE, data, where)
+    
+class Rooms(Delete, api.Rooms):
+    table = db.Room.TABLE
+    delete_required = ['room_id']
 
+    def post(self):
+        return db.Room.insert(request.json), 201
+
+    def patch(self):
+        return db.Room.update_many(request.json)
 
 class Periods(Post, Patch, Delete, api.Periods):
     table = db.Period.TABLE
@@ -121,11 +134,6 @@ class Sessions(Post, Patch, Delete, api.Sessions):
     table = db.Session.TABLE
     patch_required = ['session_id']
     delete_required = ['session_id']
-    
-class Rooms(Post, Patch, Delete, api.Rooms):
-    table = db.Room.TABLE
-    patch_required = ['room_id']
-    delete_required = ['room_id']
     
 class RoomTypes(Post, Patch, Delete, api.RoomTypes):
     table = db.RoomType.TABLE
