@@ -1,0 +1,16 @@
+[
+    {
+        "secu_level": 0,
+        "label": "公共"
+    },
+    {
+        "secu_level": 1,
+        "label": "匿名",
+        "description": "您的姓名不会显示在预订信息中。"
+    },
+    {
+        "secu_level": 2,
+        "label": "私密",
+        "description": "只有您自己可以看到您的预订信息。"
+    }
+]

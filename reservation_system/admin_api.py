@@ -1,34 +1,44 @@
 from datetime import datetime, timedelta
-import dateutil.parser
+from mysql.connector import Error, errorcode
 
 from flask import g, request, Blueprint
-from flask.views import MethodView
 from functools import wraps
 from werkzeug.security import generate_password_hash
 
+from flask_apispec import MethodResource
+from flask_apispec import marshal_with, doc, use_kwargs
+from marshmallow import Schema, fields, validate
+
 from reservation_system import db, api
-from reservation_system.auth import auth_required
+from reservation_system.auth import auth_required, openapi_cookie_auth
 from reservation_system.util import abort
 
-def init_api(app):
+def init_api(app, docs):
     for path, view in (
-        (    'admin/reservations', Reservations  ),
-        (           'admin/users', Users         ),
-        (       'admin/languages', Languages     ),
-        (     'admin/resv_status', ResvStatus    ),
-        ('admin/resv_secu_levels', ResvSecuLevels),
-        (           'admin/rooms', Rooms         ),
-        (      'admin/room_types', RoomTypes     ),
-        (     'admin/room_status', RoomStatus    ),
-        (        'admin/sessions', Sessions      ),
-        (         'admin/notices', Notices       ),
-        (      'admin/user_roles', UserRoles     ),
-        (         'admin/periods', Periods       ),
-        (        'admin/settings', Settings      ),
+        ('reservations'              , Reservations  ),
+        ('reservations/<string:date>', GetReservation),
+        ('reservations/<int:resv_id>', PatchReservation),
+        ('reservations/<int:resv_id>/<string:username>', PatchReservation),
+        # ('reservations/<int:resv_id>/<int:slot_id>', PatchReservation),
+        ('reservations/<int:resv_id>/<string:username>/<int:slot_id>', PatchReservation),
+        # ('reservations/<int:resv_id>/<int:slot_id>/<string:username>', PatchReservation),
+        # ('reservations/status'       , ResvStatus    ),
+        # ('reservations/privacy'      , ResvPrivacy   ),
+        # ('users'                     , Users         ),
+        # ('users/roles'               , UserRoles     ),
+        # ('languages'                 , Languages     ),
+        # ('rooms'                     , Rooms         ),
+        # ('rooms/types'               , RoomTypes     ),
+        # ('rooms/status'              , RoomStatus    ),
+        # ('sessions'                  , Sessions      ),
+        # ('notices'                   , Notices       ),
+        # ('periods'                   , Periods       ),
+        # ('settings'                  , Settings      ),
     ):
-        app.add_url_rule(f'/api/{path}', view_func=view.as_view(path))
+        app.add_url_rule(f'/api/admin/{path}', view_func=view.as_view(f'admin/{path}'))
+        docs.register(view, endpoint=f'admin/{path}')
 
-class AdminView(MethodView):
+class AdminView(MethodResource):
     decorators = [auth_required(role=db.UserRole.ADMIN)]
 
 class Post(AdminView):
@@ -42,7 +52,7 @@ class Patch(AdminView):
     #     - it is a list of required columns for `where`
     def patch(self):
         """`request.json` must be a list of objects with `data` and `where`"""
-        print("json", request.json)
+        print(request.json)
         for data in request.json:
             where = data['where']
             for col in self.patch_required:
@@ -63,52 +73,136 @@ class Delete(AdminView):
                     abort(400, f'{col} is required')
         return db.delete_many(self.table, request.json)
     
-# 
-class Reservations(AdminView):
-    def get(self):
-        """args may contain `date` as `YYYY-MM-DD` to get whole day's reservations"""
-        args = request.args.to_dict()
-        return db.Reservation.get(where=args)
+class GetReservation(AdminView):
+    @marshal_with(
+        db.Reservation.schema(many=True), 
+        code=200, description='Success'
+    )
+    @doc(description='Get reservations',
+         tags=['Admin'], params={
+        'date': {
+            'in': 'path', 
+            'type': 'string', 
+            'format': 'date', 
+            'description': 'Date of reservations to get'
+        },
+        **db.Reservation.args()},
+        **openapi_cookie_auth
+    )   
+    def get(self, date=None):
+        args = request.args
+        if date: args['DATE(start_time)'] = 'DATE(%s)' % date
+        return db.select(db.Reservation.TABLE, where=args,
+                        order_by=['start_time', 'end_time'])
+class AdminPostResvSchema(Schema):
+    class TimeSlotSchema(Schema):
+        start_time = fields.DateTime(required=True)
+        end_time = fields.DateTime(required=True)
+        status = fields.Int(default=db.ResvStatus.CONFIRMED)
+    username = fields.Str()
+    room_id = fields.Int(required=True)
+    title = fields.Str(required=True)
+    note = fields.Str()
+    session_id = fields.Int()
+    privacy = fields.Int(default=db.ResvPrivacy.PUBLIC)
+    time_slots = fields.List(
+        fields.Nested(TimeSlotSchema()), 
+        required=True,
+        validate=validate.Length(min=1)
+    )
+
+class Reservations(GetReservation):
+    @use_kwargs(AdminPostResvSchema())
+    @marshal_with(db.Reservation.schema(only=['resv_id'], many=True), code=201, description='Success')
+    @doc(description='Create reservations', tags=['Admin'], **openapi_cookie_auth)
+    def post(self, time_slots, **kwargs):
+        if 'username' not in kwargs:
+            kwargs['username'] = g.sub['username']
+        
+        cnx = db.get_cnx(); cursor = cnx.cursor()
+        try:
+            cursor.execute(f"""
+                INSERT INTO {db.Reservation.RESV_TABLE}
+                ({', '.join(kwargs.keys())})
+                VALUES ({', '.join(['%s']*len(kwargs))})
+            """, tuple(kwargs.values()))
+            resv_id = cursor.lastrowid
+            cursor.executemany(f"""
+                INSERT INTO {db.Reservation.TS_TABLE}
+                (resv_id, username, status, start_time, end_time)
+                VALUES ({resv_id}, '{g.sub['username']}', %s, %s, %s)
+            """, [(ts['status'], ts['start_time'], ts['end_time']) for ts in time_slots])
+            cnx.commit()
+        except Exception as e:
+            abort(500, str(e))
+        finally:
+            cursor.close()
+        
+        return {'resv_id': resv_id}, 201
     
-    def post(self):
-        """create reservations"""
-        data = request.json
-        if 'username' not in data:
-            data['username'] = g.sub['username']
-        if 'secu_level' not in data:
-            data['secu_level'] = db.SecuLevel.PUBLIC
-        if 'status' not in data:
-            data['status'] = db.ResvStatus.CONFIRMED
-        return db.Reservation.insert(data), 201
-    
-    def patch(self):
-        """update reservations"""
-        data = request.json['data']
-        where = request.json['where']
-        if 'resv_id' not in where:
-            abort(400, 'resv_id is required')
-        if 'username' not in where:
-            where['username'] = g.sub['username']
-        slot_id = where.get('slot_id', None)
-        return db.Reservation.update(where['resv_id'], where['username'], data, slot_id)
-    
+class PatchReservation(AdminView):
+    class PatchResvSchema(Schema):
+        title = fields.Str()
+        note = fields.Str()
+        status = fields.Int()
+        privacy = fields.Int()
+
+    @marshal_with(Schema(), code=200, description='Success')
+    @use_kwargs(PatchResvSchema())
+    @doc(description='Update reservations', tags=['Admin'],
+        params={
+            'resv_id': {
+                'in': 'path',
+                'type': 'integer',
+                'description': 'Reservation ID',
+            },
+            'username': {
+                'in': 'path',
+                'type': 'string',
+                'description': 'Reservation owner',
+            },
+            'slot_id': {
+                'in': 'path',
+                'type': 'integer',
+                'description': 'Reservation time slot ID',
+            },
+        },
+        **openapi_cookie_auth)
+    def patch(self, resv_id, username=None, slot_id=None, **kwargs):
+        where = {'resv_id': resv_id}
+        if username: where['username'] = username
+        if slot_id: 
+            where['slot_id'] = slot_id
+        return db.update(db.Reservation.TABLE, [{
+            'where': where,
+            'data': kwargs
+        }])
+
 class Users(AdminView):
     def get(self):
         return db.User.get(where=request.args.to_dict())
     
     def post(self):
-        data = request.json
-        if 'role' not in data:
-            data['role'] = db.UserRole.RESTRICTED
+        data_list = request.json
+        for data in data_list:
+            if 'role' not in data:
+                data['role'] = db.UserRole.RESTRICTED
         data['password'] = generate_password_hash(data['password'])
-        return db.insert(db.User.TABLE, [data]), 201
+        try:
+            return db.insert(db.User.TABLE, data_list), 201
+        except Error as e:
+            if e.errno == errorcode.ER_DUP_ENTRY:
+                abort(409, 'username already exists')
+            else:
+                abort(500, str(e))
     
     def patch(self):
-        data = request.json['data']
-        where = request.json['where']
-        if 'username' not in where:
-            abort(400, 'username is required')
-        return db.update(db.User.TABLE, data, where)
+        for data in request.json:
+            if 'username' not in data['where']:
+                abort(400, 'username is required')
+            if 'password' in data['data']:
+                data['data']['password'] = generate_password_hash(data['data']['password'])
+        return db.update_many(db.User.TABLE, request.json)
     
 class Rooms(Delete, api.Rooms):
     table = db.Room.TABLE
@@ -118,6 +212,9 @@ class Rooms(Delete, api.Rooms):
         return db.Room.insert(request.json), 201
 
     def patch(self):
+        for data in request.json:
+            if 'room_id' not in data['where']:
+                abort(400, 'room_id is required')
         return db.Room.update_many(request.json)
 
 class Periods(Post, Patch, Delete, api.Periods):
@@ -149,9 +246,9 @@ class ResvStatus(Patch, api.ResvStatus):
     table = db.ResvStatus.TABLE
     patch_required = ['status']
 
-class ResvSecuLevels(Patch, api.ResvSecuLevels):
-    table = db.SecuLevel.TABLE
-    patch_required = ['secu_level']
+class ResvPrivacy(Patch, api.ResvPrivacy):
+    table = db.ResvPrivacy.TABLE
+    patch_required = ['privacy']
 
 class RoomStatus(Patch, api.RoomStatus):
     table = db.RoomStatus.TABLE

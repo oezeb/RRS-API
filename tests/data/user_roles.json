@@ -1,0 +1,26 @@
+[
+    {
+        "role": -1,
+        "label": "被封锁的",
+        "description": "用户被封锁，不能预订"
+    },
+    {
+        "role": 0,
+        "label": "待审核",
+        "description": "所有预订都应该被审查"
+    },
+    {
+        "role": 1,
+        "label": "基础用户",
+        "description": "基本预订是自动的"
+    },
+    {
+        "role": 2,
+        "label": "高级用户",
+        "description": "高级预订是自动的"
+    },
+    {
+        "role": 3,
+        "label": "管理员"
+    }
+]

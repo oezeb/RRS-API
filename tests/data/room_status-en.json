@@ -1,0 +1,15 @@
+[
+    
+    {
+        "lang_code": "en",
+        "status": 0,
+        "label": "Unavailable",
+        "description": "Unavailable for booking"
+    },
+    {
+        "lang_code": "en",
+        "status": 1,
+        "label": "Available",
+        "description": "Available for booking"
+    }
+]

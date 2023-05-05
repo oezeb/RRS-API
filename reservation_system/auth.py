@@ -4,32 +4,47 @@ from datetime import datetime, timedelta
 import base64
 
 from flask import current_app, g, request, Response
-from flask.views import MethodView
 from functools import wraps
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from mysql.connector import Error, errorcode
 
+from flask_apispec import MethodResource
+from flask_apispec import marshal_with, doc, use_kwargs
+
 from reservation_system import db
 from reservation_system.util import abort
 
-def init_auth(app):
+def init_auth(app, docs):
     for path, view in (
-        ('login', Login),
+        (   'login', Login   ),
         ('register', Register),
-        ('logout', Logout),
+        (  'logout', Logout  ),
     ):
         app.add_url_rule(f'/api/{path}', view_func=view.as_view(path))
+        docs.register(view, endpoint=path)
 
-class Login(MethodView):
+class Login(MethodResource):
+    @doc(description='Login using Basic Auth', tags=['Auth'], 
+        components={
+            'securitySchemes': {
+                'basicAuth': {
+                    'type': 'http',
+                    'scheme': 'basic'
+                }
+            }
+        },
+        security=[{'basicAuth': []}]
+    )
+    @marshal_with(None, code=200, description='Success')
+    @marshal_with(None, code=401, description='Invalid username or password')
     def post(self):
-        """headers: {'Authorization': 'Basic ' + btoa(${username}:${password})}"""
+        # headers: {'Authorization': 'Basic ' + btoa(${username}:${password})}
         auth_header = request.headers.get('Authorization')
         if not auth_header:
             abort(401, message='Authorization header is missing')
         auth_token = auth_header.split(' ')[1]
         username, password = base64.b64decode(auth_token).decode('utf-8').split(':')
-
 
         cnx = db.get_cnx()
         cursor = cnx.cursor(dictionary=True)
@@ -64,45 +79,32 @@ class Login(MethodView):
                     )
         return resp
     
-class Logout(MethodView):
+class Logout(MethodResource):
+    @doc(description='Logout', tags=['Auth'])
+    @marshal_with(None, code=200, description='Success')
     def post(self):
         resp = Response()
         resp.set_cookie('access_token', '', expires=0)
         return resp
     
-class Register(MethodView):
-    def post(self):
-        """
-        Register a new user.
-        Data should include `username`, `password`, `role`, `name`, and `email`.
-        Newly registered users `role` should be `0=restricted`.
-        `email` is optional.
-        """
-        data = request.json
-        if 'role' in data and data['role'] != 0:
-            abort(403, message='New users should be restricted(role=0) by default')
-        data['role'] = 0
-        data['password'] = generate_password_hash(data['password'])
-
-        cnx = db.get_cnx()
-        cursor = cnx.cursor(dictionary=True)
+class Register(MethodResource):
+    @doc(description='Register a new user', tags=['Auth'])
+    @marshal_with(None, code=201, description='Success')
+    @marshal_with(None, code=409, description='Username already exists')
+    @use_kwargs(db.User.schema(exclude=['role']))
+    def post(self, **kwargs):
+        kwargs['role'] = db.UserRole.GUEST
+        kwargs['password'] = generate_password_hash(kwargs['password'])
 
         try:
-            cursor.execute(f"""
-                INSERT INTO {db.User.TABLE}
-                ({', '.join(data.keys())})
-                VALUES ({', '.join(['%s'] * len(data))})
-            """, (*data.values(),))
-            cnx.commit()
+            db.insert(db.User.TABLE, [kwargs])
         except Error as err:
             if err.errno == errorcode.ER_DUP_ENTRY:
                 abort(409, message='Username already exists')
             else:
                 abort(500, message='Database error')
-        finally:
-            cursor.close()
-        
-        return {'message': 'User created successfully'}, 201
+    
+        return Response(status=201)
 
 def auth_required(role: int=None):
     def decorator(func):
@@ -128,3 +130,16 @@ def auth_required(role: int=None):
             return func(*args, **kwargs)
         return wrapper
     return decorator
+
+openapi_cookie_auth = {
+    'components': {
+        'securitySchemes': {
+            'cookieAuth': {
+                'type': 'apiKey',
+                'in': 'cookie',
+                'name': 'access_token'
+            }
+        }
+    },
+    'security': [{'cookieAuth': []}]
+}

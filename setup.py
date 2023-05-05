@@ -6,8 +6,9 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        'flask', 'flask_restul'
+        'flask',
         'pyjwt',
+        'mysql-connector-python',
         # 'pytest', 'coverage',
     ],
 )

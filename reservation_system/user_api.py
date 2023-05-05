@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from flask import g, request, current_app
 from flask.views import MethodView
@@ -6,150 +6,196 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from mysql.connector import Error, errorcode
 
+from flask_apispec import MethodResource
+from flask_apispec import marshal_with, doc, use_kwargs
+from marshmallow import Schema, fields, validate
+
 from reservation_system import db
 from reservation_system.util import abort
-from reservation_system.auth import auth_required
+from reservation_system.auth import auth_required, openapi_cookie_auth
 
-def init_api(app):
+def init_api(app, docs):
     for path, view in (
         ('user', User),
         ('user/reservation', Reservation),
-        ('user/reservation/today', TodayResv),
+        ('user/reservation/<string:date>', GetReservation),
+        ('user/reservation/<int:resv_id>', PatchReservation),
+        ('user/reservation/<int:resv_id>/<int:slot_id>', PatchReservation),
+        ('user/reservation/advanced', AdvancedResv),
     ):
         app.add_url_rule(f'/api/{path}', view_func=view.as_view(path))
+        docs.register(view, endpoint=path)
 
-class User(MethodView):
-    @auth_required()
+class User(MethodResource):
+    @auth_required(role=db.UserRole.RESTRICTED)
+    @marshal_with(db.User.schema(), code=200, description='Success')
+    @marshal_with(None, code=404, description='User not found')
+    @doc(description='Get user info', tags=['User'], **openapi_cookie_auth)
     def get(self):
-        try:
-            user = db.User.get(g.sub['username'])
-            return user
-        except Exception as e:
-            current_app.logger.error(f"user: {g.sub['username']} not found: {e}")
+        res = db.select(db.User.TABLE, where={'username': g.sub['username']})
+        if not res:
             abort(404, message='User not found')
+        return res[0]
 
-    @auth_required()
-    def patch(self):
-        """
-        Update user info.
-        - updatable fields: `email`, `password`
-        - updating `password` requires `new_password` and `password`
-        """
-        data = request.json
-        if set(data.keys()) - {'email', 'password', 'new_password'}:
-            abort(400, message='Invalid field')
-  
-        if 'password' in data and 'new_password' in data:
-            password = db.User.get_password(g.sub['username'])
-            if not check_password_hash(password, data['password']):
+    @auth_required(role=db.UserRole.RESTRICTED)
+    @marshal_with(Schema(), code=204, description='Success')
+    @use_kwargs(Schema.from_dict({
+        'email': fields.Email(),
+        'password': fields.Str(),
+        'new_password': fields.Str(),
+    }))
+    @doc(description='Update user info', tags=['User'], **openapi_cookie_auth)
+    def patch(self, **kwargs):
+        if 'password' in kwargs and 'new_password' in kwargs:
+            res = db.select(db.User.TABLE, where={'username': g.sub['username']})
+            if not res:
+                abort(404, message='User not found')
+            if not check_password_hash(res[0]['password'], kwargs['password']):
                 abort(401, message='Invalid password')
-            password = generate_password_hash(data['new_password'])
-        elif 'password' in data or 'new_password' in data:
+            kwargs['password'] = generate_password_hash(kwargs['new_password'])
+            kwargs.pop('new_password')
+        elif 'password' in kwargs or 'new_password' in kwargs:
             abort(400, message='Missing new password or password')
-        else:
-            password = None
 
-        email = data.get('email', None)
-
-        try: 
-            db.User.update(g.sub['username'], email=email, password=password)
-        except Exception as e:
-            current_app.logger.error(f"Error occurred while updating user: {e}")
+        try:
+            db.update(db.User.TABLE, [{'data': kwargs, 'where': {'username': g.sub['username']}}])
+            return None, 204
+        except Error as err:
+            current_app.logger.error(f"Error occurred while updating user: {err}")
             abort(500, message='Failed to update user')
 
-        return {'message': 'User updated successfully'}, 200
+def _resv_post_schema():
+    schema = db.Reservation.schema(exclude=['resv_id', 'username', 'privacy', 'time_slots'])
+    time_slots = fields.List(fields.Nested(db.Reservation.ts_schema(exclude=['slot_id', 'status'])))
+    # schema.room_id.required = True
+    # schema.title.required = True
+    # schema.time_slots.required = True
+    return Schema.from_dict({
+        **schema.fields,
+        'time_slots': time_slots,
+    })
 
-class Reservation(MethodView):
-    @auth_required()
-    def get(self):
-        """
-        Get reservations of current session of current user.
-        - Optional query parameter `date` as `YYYY-MM-DD`
-        allow user to get whole day reservations of a specific date.
-        """
-        where = request.args.to_dict()
-        where['username'] = g.sub['username']
-
-        return db.Reservation.get(where)
-    
+class GetReservation(MethodResource):
     @auth_required(role=db.UserRole.RESTRICTED)
-    def post(self):
+    @marshal_with(
+        db.Reservation.schema(many=True), 
+        code=200, description='Success'
+    )
+    @doc(description='Get user reservations',
+         tags=['User'], params={
+        'date': {
+            'in': 'path', 
+            'type': 'string', 
+            'format': 'date', 
+            'description': 'Date of reservations to get'
+        },
+        **db.Reservation.args(exclude=['username'])},
+        **openapi_cookie_auth
+    )
+    def get(self):
+        args = request.args
+        if date: args['DATE(start_time)'] = 'DATE(%s)' % date
+        return db.select(db.Reservation.TABLE, where=args, 
+                        order_by=['start_time', 'end_time'])
+
+class UserResvPostSchema(Schema):
+    room_id = fields.Int(required=True)
+    title = fields.Str(required=True)
+    note = fields.Str()
+    session_id = fields.Int()
+    start_time = fields.DateTime(required=True)
+    end_time = fields.DateTime(required=True)
+
+class Reservation(GetReservation):
+    @auth_required(role=db.UserRole.GUEST)
+    @marshal_with(db.Reservation.schema(only=['resv_id']), code=201, description='Success')
+    @use_kwargs(UserResvPostSchema())
+    @doc(description='Create a new reservation', tags=['User'], **openapi_cookie_auth)
+    def post(self, **kwargs):
         """
         Create a new reservation.
         - Required fields: `room_id`, `title`, `time_slots`
-            - `time_slots`: Non-empty list of (`start_time`, `end_time`)
         - Optional fields: `note`, `session_id`
-            - `session_id`: is required for multi-time-slot reservation
-        - Auto generated fields: `status`, `secu_level`
-            - `status`: depends on the user role and the nature of the reservation
-                user_role   |time_slots|in_time_window|in_time_limit|status     |reservation_type
-                ------------|----------|--------------|-------------|-----------|----------------
-               -1 BLOCKED   |any       |any           |any          |FORBIDDEN  |any
-                0 RESTRICTED|1         |YES           |YES          |0 PENDING  |BASIC
-                0 RESTRICTED|>1        |any           |any          |FORBIDDEN  |ADVANCED
-                0 RESTRICTED|any       |NO            |any          |FORBIDDEN  |ADVANCED
-                0 RESTRICTED|any       |any           |NO           |FORBIDDEN  |ADVANCED
-                1 BASIC     |1         |YES           |YES          |1 CONFRIMED|BASIC
-                1 BASIC     |>1        |any           |any          |0 PENDING  |ADVANCED
-                1 BASIC     |any       |NO            |any          |0 PENDING  |ADVANCED
-                1 BASIC     |any       |any           |NO           |0 PENDING  |ADVANCED
-                2 ADVANCED  |any       |any           |any          |1 CONFRIMED|any
+        - Auto generated fields: `username`, `privacy`=`public`, 
+        `status`=`pending` if `role`<=`GUEST` else `approved`
         """
-        data = request.json
+        now = datetime.now()
+        if kwargs['start_time'] > kwargs['end_time']:
+            abort(400, message='Invalid time range')
+        
+        # time window check
+        if kwargs['start_time'] < now:
+            abort(400, message='Cannot reserve in the past')
+        tm = db.Setting.time_window()
+        if tm is not None:
+            if kwargs['end_time'] > now + tm:
+                abort(400, message='Cannot reserve too far in the future')
+        # time limit check
+        tm = db.Setting.time_limit()
+        if tm is not None:
+            if kwargs['end_time'] - kwargs['start_time'] > tm:
+                abort(400, message='Cannot reserve too long')
+        
+        # max daily reservation check
+        md = db.Setting.max_daily()
+        if md is not None:
+            res = db.select(db.Reservation.TABLE, where={
+                'username': g.sub['username'],
+                'DATE(create_time)': 'DATE(%s)' % now.strftime('%Y-%m-%d')
+            }, columns=['COUNT(*) AS num'])
+            if res[0]['num'] >= md:
+                abort(400, message='Exceed max daily reservation limit')
 
-        # Check required fields
-        if 'room_id' not in data or 'title' not in data or 'time_slots' not in data:
-            abort(400, message='Missing required fields')
-        if not data['time_slots']:
-            abort(400, message='Time_slots cannot be empty')
+        # time range is combined periods check
+        if not db.Period.is_combined_periods(kwargs['start_time'], kwargs['end_time']):
+            abort(400, message='Time range is not combined periods')
         
-        # Auto generate fields
-        data['secu_level'] = db.SecuLevel.PUBLIC
-        
-        data['status'] = db.ResvStatus.PENDING
-        if g.sub['role'] >= db.UserRole.ADVANCED:
-            data['status'] = db.ResvStatus.CONFIRMED
+        # room availability check
+        if not db.Room.is_available(kwargs['room_id']):
+            abort(400, message='Room is not available')
+
+        # add auto generated fields
+        kwargs['username'] = g.sub['username']
+        kwargs['privacy'] = db.ResvPrivacy.PUBLIC
+        if g.sub['role'] <= db.UserRole.GUEST:
+            kwargs['status'] = db.ResvStatus.PENDING
         else:
-            slot_num = len(data['time_slots'])
-            if slot_num > 1 and 'session_id' not in data:
-                abort(400, message='Missing session_id')
+            kwargs['status'] = db.ResvStatus.CONFIRMED
 
-            in_time_window = db.Setting.in_time_window(data['time_slots'])
-            in_time_limit = db.Setting.in_time_limit(data['time_slots'])
-            if g.sub['role'] <= db.UserRole.RESTRICTED:
-                if slot_num > 1 or not in_time_window or not in_time_limit:
-                    abort(400, message='Access denied')
-            elif g.sub['role'] == db.UserRole.BASIC:
-                if slot_num == 1 and in_time_window and in_time_limit:
-                    data['status'] = db.ResvStatus.CONFIRMED
-
-        # Check other constraints
-        if not db.Room.available(data['room_id']):
-            abort(400, message='Room not available')
-        if not db.Setting.below_max_daily(g.sub['username']):
-            abort(400, message='Reservation per day limit reached')
-        if not db.Period.is_comb_of_periods(data['time_slots']):
-            abort(400, message='Time_slots must be combination of periods')
-        # There are more constraints, already implemented in the database.
-        # See `schema.sql`, `schema.py`, and `db.py::init_db`
-        # - `start_time` < `end_time`
-        # - `start_time` and `end_time` within `session.start_time` and `session.end_time`
-        # - `confirmed` and `pending` reservation `time_slots` do not overlap
-
-        data['username'] = g.sub['username']
         try:
-            resv_id = db.Reservation.insert(data)
+            res = db.insert(db.Reservation.TABLE, [kwargs])
+            return {'resv_id': res['lastrowid'][0]}, 201
         except Error as err:
             current_app.logger.error(err)
             if err.errno == errorcode.ER_DUP_ENTRY:
                 abort(409, message='Reservation already exists')
             else:
                 abort(500, message=f'Database error: {err.msg}')
-
-        return { 'resv_id': resv_id, 'message': 'Reservation created successfully'}, 201
     
-    @auth_required()
-    def patch(self):
+class PatchReservation(MethodResource):
+    class UserResvPatchSchema(Schema):
+        title = fields.Str()
+        note = fields.Str()
+        status = fields.Int(validate=validate.OneOf([db.ResvStatus.CANCELLED]))
+
+    @auth_required(role=db.UserRole.GUEST)
+    @marshal_with(Schema(), code=204, description='Success')
+    @use_kwargs(UserResvPatchSchema())
+    @doc(description='Update reservation info', tags=['User'], 
+        params={
+            'resv_id': {
+                'in': 'path',
+                'type': 'integer',
+                'description': 'Reservation ID',
+            },
+            'slot_id': {
+                'in': 'path',
+                'type': 'integer',
+                'description': 'Reservation time slot ID',
+            },
+        },
+         **openapi_cookie_auth)
+    def patch(self, resv_id, slot_id=None, status=None, **kwargs):
         """
         Update reservation info.
         `request.json` should contain:
@@ -157,48 +203,89 @@ class Reservation(MethodView):
             - `data`: contains the fields to be updated. `title`, `note`, `status`
                 - `status` if exists=CANCELLED
         """
-        data = request.json
-        if 'resv_id' not in data or 'data' not in data:
-            abort(400, message='Missing required fields')
-        if 'status' in data['data'] and data['data']['status'] != db.ResvStatus.CANCELLED:
-            abort(400, message='Invalid status')
-        if set(data['data'].keys()) - {'title', 'note', 'status'}:
-            abort(400, message='Invalid fields')
+        where = {
+            'resv_id': resv_id,
+            'username': g.sub['username']
+        }
+
+        if len(kwargs) > 0:
+            db.update(db.Reservation.RESV_TABLE, [{
+                'data': kwargs,
+                'where': where,
+            }])
+        if status is not None:
+            if slot_id is not None:
+                where['slot_id'] = slot_id
+            db.update(db.Reservation.TS_TABLE, [{
+                'data': {'status': status},
+                'where': where,
+            }])
         
-        try:
-            db.Reservation.update(data['resv_id'], g.sub['username'], data=data['data'])
-        except Error as err:
-            abort(500, message=f'Database error: {err.msg}')
+        return None, 204
 
-        return {'message': 'Reservation updated successfully'}, 200
-
-    @auth_required()
-    def delete(self):
-        """
-        Delete a time slot.
-        `request.json` should contain:
-            - Mandatory: `resv_id`, `slot_id`
-        """
-        if g.sub['role'] <= db.UserRole.BLOCKED:
-            abort(403, message='Access denied')
-        data = request.json
-        if set(data.keys()) != {'resv_id', 'slot_id'}:
-            abort(400, message='Invalid or missing fields')
-        
-        data['username'] = g.sub['username']
-        try: db.delete(db.Reservation.TS_TABLE, where=data)
-        except Error as err:
-            current_app.logger.error(f'Database error: {err.msg}')
-            abort(500, message='Database error')
-
-        return {'message': 'Time slot deleted successfully'}, 204
+class AdvancedResvPostSchema(Schema):
+    class TimeSlotSchema(Schema):
+        start_time = fields.DateTime(required=True)
+        end_time = fields.DateTime(required=True)
     
-class TodayResv(MethodView):
-    @auth_required()
-    def get(self):
-        """Get user today's reservations."""
+    room_id = fields.Int(required=True)
+    title = fields.Str(required=True)
+    session_id = fields.Int(required=True)
+    note = fields.Str()
+    time_slots = fields.List(
+        fields.Nested(TimeSlotSchema()), 
+        required=True,
+        validate=validate.Length(min=1)
+    )
+
+class AdvancedResv(MethodResource):
+    @auth_required(role=db.UserRole.BASIC)
+    @marshal_with(db.Reservation.schema(only=['resv_id'], many=True), code=201, description='Success')
+    @use_kwargs(AdvancedResvPostSchema())
+    @doc(description='Create advanced reservation', tags=['User'], 
+        **openapi_cookie_auth)
+    def post(self, time_slots, **kwargs):
+        """
+        Create advanced reservation.
+        - required fields: `room_id`, `title`, `session_id`, `time_slots`
+        - Optional fields: `note`
+        - Auto generated fields: `username`, `privacy`=`public`,
+            `status`=`pending` if `role`<=`BASIC` else `approved`
+        """
+        # time range is combined periods check
+        for start_time, end_time in time_slots:
+            if not db.Period.is_combined_periods(start_time, end_time):
+                abort(400, message='Time range is not combined periods')
+        
+        # room availability check
+        if not db.Room.is_available(kwargs['room_id']):
+            abort(400, message='Room is not available')
+        
+        # add auto generated fields
+        kwargs['username'] = g.sub['username']
+        kwargs['privacy'] = db.ResvPrivacy.PUBLIC
+        if g.sub['role'] <= db.UserRole.BASIC:
+            status = db.ResvStatus.PENDING
+        else:
+            status = db.ResvStatus.CONFIRMED
+        
+        cnx = db.get_cnx(); cursor = cnx.cursor()
         try:
-            return db.Reservation.today_resvs(g.sub['username'])
-        except Error as err:
-            current_app.logger.error(f'Database error: {err.msg}')
-            abort(500, message='Database error')
+            cursor.execute(f"""
+                INSERT INTO {db.Reservation.RESV_TABLE}
+                ({', '.join(kwargs.keys())})
+                VALUES ({', '.join(['%s']*len(kwargs))})
+            """, tuple(kwargs.values()))
+            resv_id = cursor.lastrowid
+            cursor.executemany(f"""
+                INSERT INTO {db.Reservation.TS_TABLE}
+                (resv_id, username, status, start_time, end_time)
+                VALUES ({resv_id}, '{g.sub['username']}', {status}, %s, %s)
+            """, [(start_time, end_time) for start_time, end_time in time_slots])
+            cnx.commit()
+        except Exception as e:
+            abort(500, str(e))
+        finally:
+            cursor.close()
+            
+        return {'resv_id': resv_id}, 201

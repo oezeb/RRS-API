@@ -2,14 +2,13 @@
 import json
 from typing import Union
 from datetime import date, datetime, time, timedelta
-import click
-import dateutil.parser
 import logging
 import os
 import base64
 
 import mysql.connector
 from flask import current_app, g
+import click
 
 from reservation_system import schema
 
@@ -19,9 +18,6 @@ def init_app(app):
     app.teardown_appcontext(close_cnx)
     app.cli.add_command(init_db_command)
 
-# ----------------------------------------------------------------
-# Database Initialization
-# ----------------------------------------------------------------
 def get_cnx():
     if 'cnx' not in g:
         g.cnx = mysql.connector.connect(
@@ -37,6 +33,10 @@ def close_cnx(e=None):
 
     if cnx is not None:
         cnx.close()
+
+# ----------------------------------------------------------------
+# Database Initialization
+# ----------------------------------------------------------------
 
 @click.command('init-db')
 def init_db_command():
@@ -106,66 +106,42 @@ class Setting(schema.Setting):
 
     @staticmethod
     def time_window():
-        value = select(Setting.TABLE, {'id': Setting.TIME_WINDOW})[0]['value']
-        return Setting.str_to_timedelta(value)
+        cnx = get_cnx(); cursor = cnx.cursor()
+        cursor.execute("""
+            SELECT value FROM %s WHERE id = %s
+        """ % (Setting.TABLE, Setting.TIME_WINDOW))
+        tm = cursor.fetchone()
+        cursor.close()
+        if tm is None: return None
+        return Setting.str_to_timedelta(tm[0])
+    
     @staticmethod
     def time_limit():
-        value = select(Setting.TABLE, {'id': Setting.TIME_LIMIT})[0]['value']
-        return Setting.str_to_timedelta(value)
+        cnx = get_cnx(); cursor = cnx.cursor()
+        cursor.execute("""
+            SELECT value FROM %s WHERE id = %s
+        """ % (Setting.TABLE, Setting.TIME_LIMIT))
+        tm = cursor.fetchone()
+        cursor.close()
+        if tm is None: return None
+        return Setting.str_to_timedelta(tm[0])
+    
     @staticmethod
     def max_daily():
-        value = select(Setting.TABLE, {'id': Setting.MAX_DAILY})[0]['value']
-        return int(value)
-
-    @staticmethod
-    def in_time_window(time_slots):
-        now = datetime.now()
-        time_window = Setting.time_window()
-        for ts in time_slots:
-            start_time, end_time = ts['start_time'], ts['end_time']
-            if not isinstance(start_time, datetime):
-                start_time = dateutil.parser.parse(start_time)
-            if not isinstance(end_time, datetime):
-                end_time = dateutil.parser.parse(end_time)
-
-            if start_time < now or end_time < now:
-                return False
-            if start_time > now + time_window or end_time > now + time_window:
-                return False
-        return True
-    
-    @staticmethod
-    def in_time_limit(time_slots):
-        time_limit = Setting.time_limit()
-        for ts in time_slots:
-            start_time, end_time = ts['start_time'], ts['end_time']
-            if not isinstance(start_time, datetime):
-                start_time = dateutil.parser.parse(start_time)
-            if not isinstance(end_time, datetime):
-                end_time = dateutil.parser.parse(end_time)
-            if end_time - start_time > time_limit:
-                return False
-        return True
-    
-    @staticmethod
-    def below_max_daily(username):
-        return len(Reservation.today_resvs(username)) < Setting.max_daily()
+        cnx = get_cnx(); cursor = cnx.cursor()
+        cursor.execute("""
+            SELECT value FROM %s WHERE id = %s
+        """ % (Setting.TABLE, Setting.MAX_DAILY))
+        tm = cursor.fetchone()
+        cursor.close()
+        if tm is None: return None
+        return int(tm[0])
 
 class Reservation(schema.Reservation):
     @staticmethod
-    def get(where=None):
-        """`where` may contain `date` as `YYYY-MM-DD`"""
-        date = where.pop('date', None)
-        if date:
-            where['DATE(start_time)'] = date
-        res = select(Reservation.TABLE, where, order_by=['start_time', 'end_time'])
-        for r in res:
-            r['start_time'] = r['start_time'].isoformat(' ')
-            r['end_time'] = r['end_time'].isoformat(' ')
-            r['create_time'] = r['create_time'].isoformat(' ')
-            if r['update_time']:
-                r['update_time'] = r['update_time'].isoformat(' ')
-        return res
+    def get(where=None, date=None):
+        if date: where['DATE(start_time)'] = 'DATE(%s)' % date
+        return select(Reservation.TABLE, where, order_by=['start_time', 'end_time'])
     
     @staticmethod
     def insert(data):
@@ -202,7 +178,7 @@ class Reservation(schema.Reservation):
             where['slot_id'] = slot_id
             table = Reservation.TS_TABLE
             print(data)
-        update(table, data, where)
+        _update(table, data, where)
 
     @staticmethod
     def today_resvs(username):
@@ -231,7 +207,7 @@ class User(schema.User):
         if password: data['password'] = password
         if email: data['email'] = email
         if role: data['role'] = role
-        update(User.TABLE, data, {'username': username})
+        _update(User.TABLE, data, {'username': username})
 
 class Session(schema.Session):
     @staticmethod
@@ -245,7 +221,11 @@ class Session(schema.Session):
     
     @staticmethod
     def get(where=None):
-        return select(Session.TABLE, where, order_by=['start_time', 'end_time'])
+        res = select(Session.TABLE, where, order_by=['start_time', 'end_time'])
+        for r in res:
+            r['start_time'] = r['start_time'].isoformat(' ')
+            r['end_time'] = r['end_time'].isoformat(' ')
+        return res
     
 class Room(schema.Room):
     @staticmethod
@@ -265,19 +245,19 @@ class Room(schema.Room):
         return insert(Room.TABLE, data_list)
 
     @staticmethod
-    def update_many(data_list):
+    def update(data_list):
         for data in data_list:
             if 'image' in data['data'] and data['data']['image'] is not None:
-                data['data']['image'] = base64.b64decode(data['data']['image'])
                 print(data['data']['image'])
-        return update_many(Room.TABLE, data_list)
+                data['data']['image'] = base64.b64decode(data['data']['image'])
+        return update(Room.TABLE, data_list)
     
     @staticmethod
-    def available(room_id):
-        # return select(Room.TABLE, {'room_id': room_id})[0]['status'] == RoomStatus.AVAILABLE
-        room = select(Room.TABLE, {'room_id': room_id})[0]
-        print(room)
-        return room['status'] == RoomStatus.AVAILABLE
+    def is_available(room_id):
+        res = select(Room.TABLE, {'room_id': room_id})
+        if not res: return False
+        return res[0]['status'] == RoomStatus.AVAILABLE
+
 
 class Period(schema.Period):
     @staticmethod
@@ -289,37 +269,20 @@ class Period(schema.Period):
         return res
     
     @staticmethod
-    def is_comb_of_periods(time_slots):
+    def is_combined_periods(start_time, end_time):
         """Check if the time range is a combination of consecutive periods"""
-        sql = lambda start, end: f"""
-            SELECT SUM(TIME_TO_SEC(TIMEDIFF(p.end_time, p.start_time)))
-            FROM {Period.TABLE} p
-            WHERE p.period_id NOT IN (
-                SELECT p2.period_id FROM {Period.TABLE} p2
-                WHERE p2.end_time<=TIME('{start}')
-                OR p2.start_time>=TIME('{end}')
-            );
-            """
         cnx = get_cnx(); cursor = cnx.cursor()
-        for ts in time_slots:
-            start_time = ts['start_time']
-            end_time = ts['end_time']
-            if not isinstance(start_time, datetime):
-                start_time = dateutil.parser.parse(start_time)
-            if not isinstance(end_time, datetime):
-                end_time = dateutil.parser.parse(end_time)
-
-            start_time = timedelta(hours=start_time.hour, minutes=start_time.minute, seconds=start_time.second)
-            end_time = timedelta(hours=end_time.hour, minutes=end_time.minute, seconds=end_time.second)
-
-            if start_time > end_time:
-                return False 
-            
-            cursor.execute(sql(str(start_time), str(end_time)))
-            total = cursor.fetchone()[0]
-            if total != (end_time - start_time).total_seconds():
-                return False
-        return True
+        cursor.execute(f"""
+            SELECT SUM(TIME_TO_SEC(TIMEDIFF(p.end_time, p.start_time)))
+            FROM {Period.TABLE} p WHERE p.period_id NOT IN (
+                SELECT p2.period_id FROM {Period.TABLE} p2 
+                WHERE p2.start_time >= TIME(%s) 
+                    OR p2.end_time <= TIME(%s)
+            )
+        """, (end_time, start_time))
+        res = cursor.fetchone()
+        cursor.close()
+        return res[0] == (end_time - start_time).total_seconds()
 
 class Notice(schema.Notice): 
     @staticmethod
@@ -329,31 +292,38 @@ class Notice(schema.Notice):
 class RoomType(schema.RoomType): pass
 class UserRole(schema.UserRole): pass
 class Language(schema.Language): pass
-class SecuLevel(schema.SecuLevel): pass
+class ResvPrivacy(schema.ResvPrivacy): pass
 class ResvStatus(schema.ResvStatus): pass
 class RoomStatus(schema.RoomStatus): pass
 
 # ----------------------------------------------------------------
-# Database basic operations
+# Database CRUD operations
 # ----------------------------------------------------------------
-def select(
-        table, 
-        where: Union[dict, str]=None, 
-        columns: list=None, 
-        order_by: list=None,
-        order: str="ASC",
-    ):
+
+def insert(table, data_list):
+    cnx = get_cnx(); cursor = cnx.cursor()
+    lastrowid, rowcount = [], []
+    for data in data_list:
+        cursor.execute(f"""
+            INSERT INTO {table} ({', '.join(data.keys())}) 
+            VALUES ({', '.join(['%s']*len(data))});
+        """, (*data.values(),))
+        lastrowid.append(cursor.lastrowid)
+        rowcount.append(cursor.rowcount)
+    cnx.commit(); cursor.close()
+    return {"lastrowid": lastrowid, "rowcount": rowcount}
+
+def select(table, where=None, 
+    columns: list=None, order_by: list=None, order: str="ASC"):
     """
-    Select data from a `table`.
     `where` can be a dict or a string. If it is a dict, elements will be joined by "AND".
     `columns` is a list of columns to be selected. If it is None, all columns will be selected.
-    `order_by` is a list of columns to be ordered by. 
     """
     sql = f"SELECT {'*' if columns is None else ', '.join(columns)} FROM {table}"
     if where is not None:
         if isinstance(where, str) and where.strip() != "":
             sql += f" WHERE {where}"
-        elif isinstance(where, dict) and where != {}:
+        elif len(where) > 0:
             sql += " WHERE " + " AND ".join([f"{k}=%s" for k in where])
     if order_by is not None and order_by != []:
         sql += f" ORDER BY {' ,'.join(order_by)}"
@@ -368,22 +338,27 @@ def select(
     cnx.commit(); cursor.close()
     return data_list
 
-def insert(table, data_list):
-    """If a table has auto increment primary key, it will return the last inserted ids"""
+def update(table, data_list):
     cnx = get_cnx(); cursor = cnx.cursor()
-    lastrowid = []
     rowcount = []
     for data in data_list:
-        cursor.execute(f"""
-            INSERT INTO {table} ({', '.join(data.keys())}) 
-            VALUES ({', '.join(['%s']*len(data))});
-        """, (*data.values(),))
-        lastrowid.append(cursor.lastrowid)
-        rowcount.append(cursor.rowcount)
-    cnx.commit(); cursor.close()
-    return {"lastrowid": lastrowid, "rowcount": rowcount}
+        where = data['where'] if 'where' in data else None
+        rowcount.append(__update(cursor, table, data['data'], where)['rowcount'])
 
-def _update(cursor, table, data, where=None):
+    cnx.commit(); cursor.close()
+    return {"rowcount": rowcount}
+
+def delete(table, where_list):
+    cnx = get_cnx(); cursor = cnx.cursor()
+    rowcount = []
+    for where in where_list:
+        rowcount.append(__delete(cursor, table, where)['rowcount'])
+
+    cnx.commit(); cursor.close()
+    return {"rowcount": rowcount}
+
+# update with cursor without commit
+def __update(cursor, table, data, where=None):
     if  where is not None and where != {}:
         cursor.execute(f"""
             UPDATE {table} SET {', '.join([f'{key} = %s' for key in data])}
@@ -395,23 +370,15 @@ def _update(cursor, table, data, where=None):
         """, (*data.values(),))
     return {"rowcount": cursor.rowcount}
 
-def update(table, data, where=None):
+# single update
+def _update(table, data, where=None):
     cnx = get_cnx(); cursor = cnx.cursor()
-    rowcount = _update(cursor, table, data, where)
+    rowcount = __update(cursor, table, data, where)
     cnx.commit(); cursor.close()
     return rowcount
 
-def update_many(table, data_list):
-    cnx = get_cnx(); cursor = cnx.cursor()
-    rowcount = []
-    for data in data_list:
-        where = data['where'] if 'where' in data else None
-        rowcount.append(_update(cursor, table, data['data'], where)['rowcount'])
-
-    cnx.commit(); cursor.close()
-    return {"rowcount": rowcount}
-
-def _delete(cursor, table, where=None):
+# delete with cursor without commit
+def __delete(cursor, table, where=None):
     if where is not None and where != {}:
         cursor.execute(f"""
             DELETE FROM {table} 
@@ -420,17 +387,9 @@ def _delete(cursor, table, where=None):
     else: cursor.execute(f"DELETE FROM {table};")
     return {"rowcount": cursor.rowcount}
 
-def delete(table, where=None):
+# single delete
+def _delete(table, where=None):
     cnx = get_cnx(); cursor = cnx.cursor()
-    rowcount = _delete(cursor, table, where)
+    rowcount = __delete(cursor, table, where)
     cnx.commit(); cursor.close()
     return rowcount
-
-def delete_many(table, where_list):
-    cnx = get_cnx(); cursor = cnx.cursor()
-    rowcount = []
-    for where in where_list:
-        rowcount.append(_delete(cursor, table, where)['rowcount'])
-
-    cnx.commit(); cursor.close()
-    return {"rowcount": rowcount}
