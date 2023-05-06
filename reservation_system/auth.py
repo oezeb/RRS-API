@@ -5,45 +5,60 @@ import base64
 
 from flask import current_app, g, request, Response
 from functools import wraps
+from webargs.flaskparser import use_kwargs
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from mysql.connector import Error, errorcode
 
-from flask_apispec import MethodResource
-from flask_apispec import marshal_with, doc, use_kwargs
-
 from reservation_system import db
 from reservation_system.util import abort
+from reservation_system.api import MethodView, register_view
+from reservation_system.models.auth import login
+from reservation_system.models.auth import register
 
-def init_auth(app, docs):
+def init_auth(app, spec):
+    spec.components.security_scheme('basicAuth', {
+        'type': 'http',
+        'scheme': 'basic'
+        })
+    spec.components.security_scheme('cookieAuth', {
+        'type': 'apiKey',
+        'in': 'cookie',
+        'name': 'access_token'
+        })
+    
     for path, view in (
         (   'login', Login   ),
         ('register', Register),
         (  'logout', Logout  ),
     ):
-        app.add_url_rule(f'/api/{path}', view_func=view.as_view(path))
-        docs.register(view, endpoint=path)
+        register_view(app, spec, path, view)
 
-class Login(MethodResource):
-    @doc(description='Login using Basic Auth', tags=['Auth'], 
-        components={
-            'securitySchemes': {
-                'basicAuth': {
-                    'type': 'http',
-                    'scheme': 'basic'
-                }
-            }
-        },
-        security=[{'basicAuth': []}]
-    )
-    @marshal_with(None, code=200, description='Success')
-    @marshal_with(None, code=401, description='Invalid username or password')
-    def post(self):
-        # headers: {'Authorization': 'Basic ' + btoa(${username}:${password})}
-        auth_header = request.headers.get('Authorization')
-        if not auth_header:
-            abort(401, message='Authorization header is missing')
-        auth_token = auth_header.split(' ')[1]
+class Login(MethodView):
+    schemas = {
+        'login.post.headers': login.PostHeaderSchema
+    }
+
+    @use_kwargs(login.PostHeaderSchema, location='headers')
+    def post(self, Authorization):
+        """Login using Basic Auth.
+        ---
+        description: Login using Basic Auth. Returns a cookie containing a JWT access token.
+        tags:
+          - Auth
+        security:
+          - basicAuth: []
+        requestBody:
+          content:
+            application/json:
+              schema: PostHeaderSchema
+        responses:
+          200:
+            description: OK
+          401:
+            description: Invalid username or password
+        """
+        auth_token = Authorization.split(' ')[1]
         username, password = base64.b64decode(auth_token).decode('utf-8').split(':')
 
         cnx = db.get_cnx()
@@ -79,20 +94,43 @@ class Login(MethodResource):
                     )
         return resp
     
-class Logout(MethodResource):
-    @doc(description='Logout', tags=['Auth'])
-    @marshal_with(None, code=200, description='Success')
+class Logout(MethodView):
     def post(self):
+        """Logout
+        ---
+        description: Logout. Clears the JWT access token cookie.
+        tags:
+          - Auth
+        responses:
+          200:
+            description: OK
+        """
         resp = Response()
         resp.set_cookie('access_token', '', expires=0)
         return resp
-    
-class Register(MethodResource):
-    @doc(description='Register a new user', tags=['Auth'])
-    @marshal_with(None, code=201, description='Success')
-    @marshal_with(None, code=409, description='Username already exists')
-    @use_kwargs(db.User.schema(exclude=['role']))
+
+class Register(MethodView):
+    schemas = {
+        'register.post.body': register.PostBodySchema
+    }
+
+    @use_kwargs(register.PostBodySchema())
     def post(self, **kwargs):
+        """Register a new user
+        ---
+        description: Register a new user
+        tags:
+          - Auth
+        requestBody:
+          content:
+            application/json:
+              schema: PostBodySchema
+        responses:
+          201:
+            description: Created
+          409:
+            description: Username already exists
+        """
         kwargs['role'] = db.UserRole.GUEST
         kwargs['password'] = generate_password_hash(kwargs['password'])
 
@@ -130,16 +168,3 @@ def auth_required(role: int=None):
             return func(*args, **kwargs)
         return wrapper
     return decorator
-
-openapi_cookie_auth = {
-    'components': {
-        'securitySchemes': {
-            'cookieAuth': {
-                'type': 'apiKey',
-                'in': 'cookie',
-                'name': 'access_token'
-            }
-        }
-    },
-    'security': [{'cookieAuth': []}]
-}
