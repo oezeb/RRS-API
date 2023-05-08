@@ -1,6 +1,6 @@
 import base64
 
-from marshmallow import fields
+from marshmallow import fields, validate, ValidationError
 
 class TimeDeltaField(fields.TimeDelta):
     def _serialize(self, value, attr, obj, **kwargs):
@@ -20,3 +20,4 @@ class ImageField(fields.Str):
         if value is None:
             return None
         return base64.b64decode(value)
+        

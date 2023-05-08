@@ -26,11 +26,6 @@ def init_api(app, spec):
         
 
 class User(MethodView):
-    schemas = {
-        'user.post.response.200': user.GetRespSchema,
-        'user.patch.body': user.PatchBodySchema,
-    }
-
     @auth_required(role=db.UserRole.RESTRICTED)
     @marshal_with(user.GetRespSchema(), code=200)
     def get(self):
@@ -97,13 +92,6 @@ class User(MethodView):
         return Response(status=204)
 
 class Reservation(MethodView):
-    schemas = {
-        'user.reservation.get.response.200': resv.UserResvGetRespSchema(many=True),
-        'user.reservation.get.query': resv.UserResvGetQuerySchema(),
-        'user.reservation.post.body': resv.UserResvPostBodySchema(),
-        'user.reservation.post.response.201': resv.UserResvPostRespSchema(),
-    }
-
     @auth_required(role=db.UserRole.RESTRICTED)
     @marshal_with(resv.UserResvGetRespSchema(many=True), code=200)
     @use_kwargs(resv.UserResvGetQuerySchema(), location='query')
@@ -124,18 +112,18 @@ class Reservation(MethodView):
             content:
               application/json:
                 schema: UserResvGetRespSchema
-        """
+        """        
         kwargs['username'] = g.sub['username']
-        if date: kwargs['DATE(start_time)'] = 'DATE(%s)' % date
+        if date: kwargs['DATE(create_time)'] = '%s' % date
         return db.select(db.Reservation.TABLE, where=kwargs,
                         order_by=['start_time', 'end_time'])
     
     @auth_required(role=db.UserRole.GUEST)
     @use_kwargs(resv.UserResvPostBodySchema())
     @marshal_with(resv.UserResvPostRespSchema(), code=201)
-    def post(self, **kwargs):
+    def post(self, start_time, end_time, **kwargs):
         """Create a new reservation.
-        - Required fields: `room_id`, `title`, `time_slots`
+        - Required fields: `room_id`, `title`, `start_time`, `end_time`
         - Optional fields: `note`, `session_id`
         - Auto generated fields: `username`, `privacy`=`public`, 
         `status`=`pending` if `role`<=`GUEST` else `approved`
@@ -157,20 +145,21 @@ class Reservation(MethodView):
                 schema: UserResvPostRespSchema
         """
         now = datetime.now()
-        if kwargs['start_time'] > kwargs['end_time']:
+        if start_time > end_time:
             abort(400, message='Invalid time range')
         
-        # time window check
-        if kwargs['start_time'] < now:
+        if start_time < now:
             abort(400, message='Cannot reserve in the past')
+
+        # time window check
         tm = db.Setting.time_window()
         if tm is not None:
-            if kwargs['end_time'] > now + tm:
+            if end_time > now + tm:
                 abort(400, message='Cannot reserve too far in the future')
         # time limit check
         tm = db.Setting.time_limit()
         if tm is not None:
-            if kwargs['end_time'] - kwargs['start_time'] > tm:
+            if end_time - start_time > tm:
                 abort(400, message='Cannot reserve too long')
         
         # max daily reservation check
@@ -178,13 +167,13 @@ class Reservation(MethodView):
         if md is not None:
             res = db.select(db.Reservation.TABLE, where={
                 'username': g.sub['username'],
-                'DATE(create_time)': 'DATE(%s)' % now.strftime('%Y-%m-%d')
+                'DATE(create_time)': '%s' % now.strftime('%Y-%m-%d')
             }, columns=['COUNT(*) AS num'])
             if res[0]['num'] >= md:
                 abort(400, message='Exceed max daily reservation limit')
 
         # time range is combined periods check
-        if not db.Period.is_combined_periods(kwargs['start_time'], kwargs['end_time']):
+        if not db.Period.is_combined_periods(start_time, end_time):
             abort(400, message='Time range is not combined periods')
         
         # room availability check
@@ -195,13 +184,28 @@ class Reservation(MethodView):
         kwargs['username'] = g.sub['username']
         kwargs['privacy'] = db.ResvPrivacy.PUBLIC
         if g.sub['role'] <= db.UserRole.GUEST:
-            kwargs['status'] = db.ResvStatus.PENDING
+            status = db.ResvStatus.PENDING
         else:
-            kwargs['status'] = db.ResvStatus.CONFIRMED
+            status = db.ResvStatus.CONFIRMED
 
+        cnx = db.get_cnx(); cursor = cnx.cursor()
         try:
-            res = db.insert(db.Reservation.TABLE, [kwargs])
-            return {'resv_id': res['lastrowid'][0]}, 201
+            print(kwargs)
+            res = cursor.execute(f"""
+              INSERT INTO {db.Reservation.RESV_TABLE}
+              ({', '.join(kwargs.keys())})
+              VALUES ({', '.join(['%s'] * len(kwargs))})
+            """, tuple(kwargs.values()))
+            resv_id = cursor.lastrowid
+            print(cursor.statement)
+            res = cursor.execute(f"""
+              INSERT INTO {db.Reservation.TS_TABLE}
+              (resv_id, username, start_time, end_time, status)
+              VALUES (%s, %s, %s, %s, %s)
+            """, (resv_id, g.sub['username'], start_time, end_time, status))
+            slot_id = cursor.lastrowid
+            cnx.commit()
+            return {'resv_id': resv_id, 'slot_id': slot_id}, 201
         except Error as err:
             current_app.logger.error(err)
             if err.errno == errorcode.ER_DUP_ENTRY:
@@ -210,11 +214,6 @@ class Reservation(MethodView):
                 abort(500, message=f'Database error: {err.msg}')
 
 class PatchResv(MethodView):
-    schemas = {
-        'user.reservation.patch.path': resv.UserResvPatchPathSchema(),
-        'user.reservation.patch.body': resv.UserResvPatchBodySchema(),
-    }
-
     @auth_required(role=db.UserRole.GUEST)
     @use_kwargs(resv.UserResvPatchBodySchema())
     @use_kwargs(resv.UserResvPatchPathSchema(), location='path')
@@ -254,11 +253,6 @@ class PatchResv(MethodView):
         return Response(status=204)
 
 class PatchResvSlot(MethodView):
-    schemas = {
-        'user.reservation.slot.patch.path': resv.UserResvSlotPatchPathSchema(),
-        'user.reservation.slot.patch.body': resv.UserResvSlotPatchBodySchema(),
-    }
-
     @auth_required(role=db.UserRole.GUEST)
     @use_kwargs(resv.UserResvSlotPatchBodySchema())
     @use_kwargs(resv.UserResvSlotPatchPathSchema(), location='path')
@@ -299,10 +293,6 @@ class PatchResvSlot(MethodView):
         return Response(status=204)
 
 class AdvancedResv(MethodView):
-    schemas = {
-        'user.advanced.reservation.post': resv.AdvancedResvPostSchema(),
-    }
-
     @auth_required(role=db.UserRole.BASIC)
     @use_kwargs(resv.AdvancedResvPostSchema())
     @marshal_with(resv.UserResvPostRespSchema(), code=201)
@@ -329,6 +319,13 @@ class AdvancedResv(MethodView):
               application/json:
                 schema: UserResvPostRespSchema
         """
+        now = datetime.now()
+        if start_time > end_time:
+            abort(400, message='Invalid time range')
+        
+        if start_time < now:
+            abort(400, message='Cannot reserve in the past')
+            
         # time range is combined periods check
         for start_time, end_time in time_slots:
             if not db.Period.is_combined_periods(start_time, end_time):

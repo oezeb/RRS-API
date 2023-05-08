@@ -5,7 +5,7 @@ from reservation_system.models.db.resv_privacy import ResvPrivacy
 from reservation_system.models.db.resv_status import ResvStatus
 
 # reservations
-class ResvGetSchema(Schema):
+class ResvSchema(Schema):
     resv_id = Reservation.resv_id()
     username = Reservation.username()
     room_id = Reservation.room_id()
@@ -20,28 +20,23 @@ class ResvGetSchema(Schema):
     start_time = Reservation.start_time()
     end_time = Reservation.end_time()
 
-class ResvGetQuerySchema(ResvGetSchema):
-    date = fields.Date(
-        description='Date of reservations to get',
-    )
+class RoomResvQuerySchema(ResvSchema):
+    date = fields.Date(description='Date of reservations to get')
 
-class ResvGetRespSchema(ResvGetSchema):
-    pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(exclude=['room_id'], *args, **kwargs)
+
+class RoomResvPathSchema(Schema):
+    room_id = Reservation.room_id()
 
 # privacy
-class ResvPrivacyGetRespSchema(Schema):
+class ResvPrivacySchema(Schema):
     privacy = ResvPrivacy.privacy()
     label = ResvPrivacy.label()
     description = ResvPrivacy.description()
 
-class ResvPrivacyGetQuerySchema(ResvPrivacyGetRespSchema):
-    pass
-
 # status
-class ResvStatusGetRespSchema(Schema):
+class ResvStatusSchema(Schema):
     status = ResvStatus.status()
     label = ResvStatus.label()
     description = ResvStatus.description()
-
-class ResvStatusGetQuerySchema(ResvStatusGetRespSchema):
-    pass

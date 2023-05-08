@@ -21,7 +21,7 @@ class RoomStatus:
     TABLE = "room_status"
     UNAVAILABLE = 0; AVAILABLE = 1
 
-class UserRole: 
+class UserRole:
     TABLE = "user_roles"
     INACTIVE = -2; RESTRICTED = -1
     GUEST = 0; BASIC = 1; ADVANCED = 2; ADMIN = 3
@@ -35,6 +35,7 @@ class Reservation:
     RESV_TABLE = "reservations"
     TS_TABLE = "time_slots"
     TABLE = f"{RESV_TABLE} NATURAL JOIN {TS_TABLE}"
+    # VIEW = "resv_view"
 
 class RoomType: TABLE = "room_types"
 class Room: TABLE = "rooms"
@@ -75,7 +76,7 @@ INSERT INTO {UserRole.TABLE} (role, label) VALUES
 
 INSERT INTO {Setting.TABLE} (id, value, name, description) VALUES
 ({Setting.TIME_WINDOW}, '72:00:00', '时间窗口', '从当前时间开始，用户最多可以提前多久预约房间'),
-({Setting.TIME_LIMIT}, '4:00:00', '时间限', '用户预约房间的最长时间'),
+({Setting.TIME_LIMIT}, '3:00:00', '时间限', '用户预约房间的最长时间'),
 ({Setting.MAX_DAILY}, '3', '每日最多次数', '用户每天最多可以预约多少次房间');
 """
 

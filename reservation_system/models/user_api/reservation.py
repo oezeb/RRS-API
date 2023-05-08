@@ -35,7 +35,7 @@ class UserResvPostBodySchema(Schema):
 
 class UserResvPostRespSchema(Schema):
     resv_id = Reservation.resv_id(required=True)
-
+    slot_id = Reservation.slot_id(required=True)
 
 class UserResvPatchBodySchema(Schema):
     title = Reservation.title()

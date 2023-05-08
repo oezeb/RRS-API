@@ -31,9 +31,10 @@ class Session:
     
     @staticmethod
     def is_current(**kwargs):
-        return fields.Int(
-            description = '0 if not current session, any other value otherwise',
-            enum = [0, 1],
+        return fields.Boolean(
+            # description = '0 if not current session, any other value otherwise',
+            # enum = [0, 1],
+            description = 'Whether this session is current',
             **kwargs
         )
     

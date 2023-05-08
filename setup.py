@@ -9,6 +9,10 @@ setup(
         'flask',
         'pyjwt',
         'mysql-connector-python',
+        'apispec',
+        'apispec-webframeworks',
+        'marshmallow',
+        'webargs'
         # 'pytest', 'coverage',
     ],
 )

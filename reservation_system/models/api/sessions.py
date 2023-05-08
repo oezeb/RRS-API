@@ -7,6 +7,7 @@ class SessionGetRespSchema(Schema):
     name = Session.name()
     start_time = Session.start_time()
     end_time = Session.end_time()
+    is_current = Session.is_current()
 
 class SessionGetQuerySchema(SessionGetRespSchema):
     pass

@@ -303,11 +303,12 @@ class RoomStatus(schema.RoomStatus): pass
 def insert(table, data_list):
     cnx = get_cnx(); cursor = cnx.cursor()
     lastrowid, rowcount = [], []
+
     for data in data_list:
         cursor.execute(f"""
             INSERT INTO {table} ({', '.join(data.keys())}) 
             VALUES ({', '.join(['%s']*len(data))});
-        """, (*data.values(),))
+        """, tuple(data.values()))
         lastrowid.append(cursor.lastrowid)
         rowcount.append(cursor.rowcount)
     cnx.commit(); cursor.close()

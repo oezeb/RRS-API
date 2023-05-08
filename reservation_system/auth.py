@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import base64
 
 from flask import current_app, g, request, Response
+from flask.views import MethodView
 from functools import wraps
 from webargs.flaskparser import use_kwargs
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -12,7 +13,7 @@ from mysql.connector import Error, errorcode
 
 from reservation_system import db
 from reservation_system.util import abort
-from reservation_system.api import MethodView, register_view
+from reservation_system.api import register_view
 from reservation_system.models.auth import login
 from reservation_system.models.auth import register
 
@@ -35,10 +36,6 @@ def init_auth(app, spec):
         register_view(app, spec, path, view)
 
 class Login(MethodView):
-    schemas = {
-        'login.post.headers': login.PostHeaderSchema
-    }
-
     @use_kwargs(login.PostHeaderSchema, location='headers')
     def post(self, Authorization):
         """Login using Basic Auth.
@@ -110,10 +107,6 @@ class Logout(MethodView):
         return resp
 
 class Register(MethodView):
-    schemas = {
-        'register.post.body': register.PostBodySchema
-    }
-
     @use_kwargs(register.PostBodySchema())
     def post(self, **kwargs):
         """Register a new user
