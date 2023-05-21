@@ -1,16 +1,16 @@
 [
     {
         "secu_level": 0,
-        "label": "Public"
+        "label": "公共"
     },
     {
         "secu_level": 1,
-        "label": "Anonymous",
-        "description": "Others will not know the user making the reservation, just the note."
+        "label": "匿名",
+        "description": "您的姓名不会显示在预订信息中。"
     },
     {
         "secu_level": 2,
-        "label": "Private",
-        "description": "No info will be displayed to other users."
+        "label": "私密",
+        "description": "只有您自己可以看到您的预订信息。"
     }
 ]

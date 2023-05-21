@@ -1,14 +1,19 @@
 [[source]]
-url = "https://pypi.org/simple"
+url = "http://pypi.mirrors.ustc.edu.cn/simple/"
 verify_ssl = true
 name = "pypi"
 
 [packages]
 mysql-connector-python = "*"
 pyjwt = "*"
-flasgger = "*"
-flask = "==2.2.*"
-flask-apispec = "*"
+flask = "*"
+apispec = "*"
+apispec-webframeworks = "*"
+marshmallow = "*"
+webargs = "*"
+pytest = "*"
+coverage = "*"
+reservation-system = {editable = true, path = "."}
 
 [dev-packages]
 

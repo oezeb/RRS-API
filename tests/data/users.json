@@ -26,5 +26,10 @@
         "username": "f_chen",
         "password": "password5",
         "name": "陈峰"
+    },
+    {
+        "username": "s_wu",
+        "password": "password6",
+        "name": "吴尚"
     }
 ]

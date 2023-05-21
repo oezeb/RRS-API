@@ -1,14 +1,20 @@
 [
     {
-        "name": "resv_time_window",
-        "value": "72:00:00"
+        "id": 1,
+        "value": "72:00:00",
+        "label": "预约时间窗口",
+        "description": "预约时间窗口是指用户可以预约的时间范围。从当前时间到时间窗口。格式：HH：MM：SS"
     },
     {
-        "name": "max_resv_time",
-        "value": "4:00:00"
+        "id": 2,
+        "value": "4:00:00",
+        "label": "预约时间限制",
+        "description": "预约时间限制是指用户可以预约的最长时间。格式：HH：MM：SS"
     },
     {
-        "name": "max_resv_per_day",
-        "value": "3"
+        "id": 3,
+        "value": "3",
+        "label": "每天最多预约次数",
+        "description": "每天最多预约次数是指用户每天可以预约的最大次数。"
     }
 ]

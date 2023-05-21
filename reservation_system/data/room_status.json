@@ -2,12 +2,12 @@
     
     {
         "status": 0,
-        "label": "Unavailable",
-        "description": "Unavailable for booking"
+        "label": "不可用",
+        "description": "不可预订"
     },
     {
         "status": 1,
-        "label": "Available",
-        "description": "Available for booking"
+        "label": "可用",
+        "description": "可预订"
     }
 ]

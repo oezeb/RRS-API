@@ -1,16 +1,26 @@
 [
     {
-        "session_id": 1,
         "name": "2022 秋季学期",
         "is_current": 0,
         "start_time": "2022/09/29",
         "end_time": "2023/01/11"
     },
     {
-        "session_id": 2,
         "name": "2023 春季学期",
         "is_current": 1,
         "start_time": "2023/02/19",
         "end_time": "2023/07/07"
+    },
+    {
+        "name": "2023 秋季学期",
+        "is_current": 0,
+        "start_time": "2023/09/29",
+        "end_time": "2024/01/11"
+    },
+    {
+        "name": "2024 春季学期",
+        "is_current": 0,
+        "start_time": "2024/02/19",
+        "end_time": "2024/07/07"
     }
 ]

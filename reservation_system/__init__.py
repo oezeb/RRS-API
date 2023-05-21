@@ -29,10 +29,10 @@ def create_app(test_config=None):
     )
     
     db.init_app(app)
-    auth.init_auth(app, spec)
     api.init_api(app, spec)
+    auth.init_auth(app, spec)
     user_api.init_api(app, spec)
-    # admin_api.init_api(app, docs)
+    admin_api.init_api(app, spec)
 
     # save docs in instance folder
     import json

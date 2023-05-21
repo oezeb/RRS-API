@@ -1,18 +1,19 @@
 [
     {
         "status": 0,
-        "label": "Pending"
+        "label": "待定"
+        
     },
     {
         "status": 1,
-        "label": "Confirmed"
+        "label": "确认"
     },
     {
         "status": 2,
-        "label": "Cancelled"
+        "label": "取消"
     },
     {
         "status": 3,
-        "label": "Rejected"
+        "label": "拒绝"
     }
 ]
