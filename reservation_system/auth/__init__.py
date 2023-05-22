@@ -6,27 +6,23 @@ from functools import wraps
 import jwt
 from flask import current_app, g, request
 
-from reservation_system.api import register_view
-from reservation_system.util import abort
+from reservation_system.util import abort, register_blueprint
 
-from .login import Login
-from .logout import Logout
-from .register import Register
+from . import login, logout, register
 
 
 def init_auth(app, spec):
+    for module in (
+        login,
+        register,
+        logout,
+    ): register_blueprint(app, spec, module)
+    
     # register security schemes
     for name, scheme in (
         ('basicAuth',  {'type': 'http', 'scheme': 'basic'}),
         ('cookieAuth', {'type': 'apiKey', 'in': 'cookie', 'name': 'access_token'}),
     ): spec.components.security_scheme(name, scheme)
-    
-    # register views
-    for path, view in (
-        (   'login', Login   ),
-        ('register', Register),
-        (  'logout', Logout  ),
-    ): register_view(app, spec, path, view)
 
 def auth_required(role: int=None):
     """Decorator for endpoints that require authentication.
@@ -77,4 +73,4 @@ def auth_required(role: int=None):
         return wrapper
     return decorator
 
-__all__ = ['login', 'logout', 'register', 'auth_required', 'init_auth']
+__all__ = ['init_auth', 'auth_required']

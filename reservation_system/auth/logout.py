@@ -1,21 +1,20 @@
-from flask import Response
-from flask.views import MethodView
+from flask import Blueprint, Response
 
-from reservation_system import db
+bp = Blueprint('api_logout', __name__, url_prefix='/api/logout')
 
-
-class Logout(MethodView):
-    def post(self):
-        """Logout
-        ---
-        summary: Logout
-        description: Clears the JWT access token cookie.
-        tags:
-          - Auth
-        responses:
-          200:
-            description: OK
-        """
-        resp = Response()
-        resp.set_cookie('access_token', '', expires=0)
-        return resp
+@bp.route('/', methods=['POST'])
+def post():
+    """Logout
+    ---
+    post:
+      summary: Logout
+      description: Clears the JWT access token cookie.
+      tags:
+        - Auth
+      responses:
+        200:
+          description: OK
+    """
+    resp = Response()
+    resp.set_cookie('access_token', '', expires=0)
+    return resp

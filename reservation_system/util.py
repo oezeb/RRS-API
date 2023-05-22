@@ -25,7 +25,9 @@ def marshal_with(schema: Schema, code: int=None):
                     _code = code
             else:
                 _code = code
-
+                
+            if not isinstance(schema, Schema):
+                schema = schema()
             data = schema.dump(res)
             if _code is None:
                 return data
@@ -34,8 +36,15 @@ def marshal_with(schema: Schema, code: int=None):
         return wrapper
     return decorator
 
+def register_blueprint(app, spec, module):
+    app.register_blueprint(module.bp)
+    with app.test_request_context():
+        for name in dir(module):
+            if name.startswith(('get', 'post', 'patch', 'delete')):
+                spec.path(view=getattr(module, name))
+
 def strptimedelta(time_str: str):
-    """Convert `HH:MM:SS` or `HH:MM` format string to timedelta object."""
+    """Convert `hh:mm:ss` or `hh:mm` format string to timedelta object."""
     time_str = time_str.split(':')
     h, m = time_str[:2]
     s = time_str[2] if len(time_str) > 2 else 0

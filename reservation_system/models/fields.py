@@ -107,10 +107,10 @@ def lang_code(**kwargs):
         **kwargs
     )
 
-class TimeDelta(fields.TimeDelta):
+class TimeDelta(fields.String):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.metadata['description'] = 'Time delta in HH:MM:SS format'
+        self.metadata['description'] = 'format hh:mm:ss'
 
     def _serialize(self, value, attr, obj, **kwargs):
         return None if value is None else strftimedelta(value)

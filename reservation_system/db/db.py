@@ -1,5 +1,3 @@
-
-import json
 import logging
 import typing
 from datetime import datetime
@@ -8,7 +6,7 @@ import click
 import mysql.connector
 from flask import current_app, g
 
-from schema import init_schema
+from .schema import init_schema
 
 logger = logging.getLogger(__name__)
 

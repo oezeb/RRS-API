@@ -14,8 +14,8 @@ def init_schema(cursor):
     with current_app.open_resource('db/schema.sql') as f:
         execute(f.read())
 
-    logger.info("Populating tables with immutable data...")
-    execute(IMMUTABLE_INSERTS)
+    logger.info("Populating tables with initial data...")
+    execute(INSERT_DATA_SQL)
 
     logger.info("Creating triggers...")
     variables = locals()
@@ -58,28 +58,16 @@ class Reservation:
     TABLE = f"{RESV_TABLE} NATURAL JOIN {TS_TABLE}"
 
 class RoomType: TABLE = "room_types"
-class Room: TABLE = "rooms"
-class User: TABLE = "users"
-class Session: TABLE = "sessions"
-class Period: TABLE = "periods"
-class Notice: TABLE = "notices"
-
-class ResvTrans: TABLE = "resv_trans"
-class ResvStatusTrans: TABLE = "resv_status_trans"
-class ResvPrivacyTrans: TABLE = "resv_privacy_trans"
-class RoomTrans: TABLE = "room_trans"
-class RoomTypeTrans: TABLE = "room_type_trans"
-class RoomStatusTrans: TABLE = "room_status_trans"
-class SessionTrans: TABLE = "session_trans"
-class NoticeTrans: TABLE = "notice_trans"
-class UserTrans: TABLE = "user_trans"
-class UserRoleTrans: TABLE = "user_role_trans"
-class SettingTrans: TABLE = "setting_trans"
+class     Room: TABLE = "rooms"
+class     User: TABLE = "users"
+class  Session: TABLE = "sessions"
+class   Period: TABLE = "periods"
+class   Notice: TABLE = "notices"
 
 # ==============================================================
-# INSERT Immutable Data
+# INSERT Data
 # ==============================================================
-IMMUTABLE_INSERTS = f"""
+INSERT_DATA_SQL = f"""
 INSERT INTO {Language.TABLE} (lang_code, name) VALUES 
 ('{Language.EN}', 'English');
 

@@ -1,14 +1,11 @@
-from reservation_system.api import register_view
-from reservation_system.user_api import reservation, user, views
+from reservation_system.util import register_blueprint
 
+from . import user, reservation
 
 def init_api(app, spec):
-    for path, view in (
-        ('user'                                        , views.User                ),
-        ('user/reservation'                            , views.GetPostReservation  ),
-        ('user/reservation/<int:resv_id>'              , views.PatchReservation    ),
-        ('user/reservation/<int:resv_id>/<int:slot_id>', views.PatchReservationSlot),
-        ('user/reservation/advanced'                   , views.AdvancedResv        ),
-    ): register_view(app, spec, path, view)
+    for module in (
+        user, 
+        reservation,
+    ): register_blueprint(app, spec, module)
 
-__all__ = ['init_api', 'user', 'reservation']
+__all__ = ['init_api']

@@ -1,11 +1,12 @@
 import os
 
-from flask import Flask
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
 from apispec_webframeworks.flask import FlaskPlugin
+from flask import Flask
 
-from reservation_system import models, db, api, auth, user_api, admin_api, util
+from reservation_system import admin_api, api, auth, db, models, user_api, util
+
 
 def create_app(test_config=None):
     # create and configure the app
@@ -34,12 +35,12 @@ def create_app(test_config=None):
     user_api.init_api(app, spec)
     admin_api.init_api(app, spec)
 
-    # save docs in instance folder
+    # save api docs in instance folder
     import json
     with open(os.path.join(app.instance_path, 'docs.json'), 'w') as f:
         json.dump(spec.to_dict(), f)
 
-    # serve docs
+    # serve api docs
     from flask import send_from_directory
     @app.route('/api/docs.json')
     def docs():
