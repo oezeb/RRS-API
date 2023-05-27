@@ -13,7 +13,8 @@ marshmallow = "*"
 webargs = "*"
 pytest = "*"
 coverage = "*"
-reservation-system = {editable = true, path = "."}
+flask-cors = "*"
+mbrs-api = {editable = true, path = "."}
 
 [dev-packages]
 

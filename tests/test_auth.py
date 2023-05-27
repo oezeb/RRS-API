@@ -1,25 +1,25 @@
-import base64, os, json
+import base64
+
+from data import insert_data, get_users
 
 BASE_URL = "http://127.0.0.1:5000/api"
 
 def test_register(client, app):
     with app.app_context():
+        user = get_users()[0]
+        user.pop('role')
         res = client.post(
-            f"{BASE_URL}/register", 
-            json={
-                'username': 'test', 
-                'password': 'test', 
-                'name': '测试用户'
-            }
+            f"{BASE_URL}/register",
+            json=user
         )
         assert res.status_code == 201
         
-def test_login(client, app_with_data):
-    with app_with_data.app_context():
-        curr_dir = os.path.dirname(__file__)
-        with open(os.path.join(curr_dir, 'data', 'users.json')) as f:
-            user = json.load(f)[0]
+def test_login(client, app):
+    with app.app_context():
+        insert_data(only=['users'])
+        user = get_users()[0]
         auth_client(client, user['username'], user['password'])
+
 
 def auth_client(client, username, password):
     cred = f"{username}:{password}"
@@ -30,4 +30,3 @@ def auth_client(client, username, password):
     )
     assert res.status_code == 200
     assert 'access_token' in res.headers['Set-Cookie']
-    return client

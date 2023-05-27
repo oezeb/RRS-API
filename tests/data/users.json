@@ -3,33 +3,39 @@
         "username": "j_li",
         "password": "password1",
         "name": "李俊",
-        "email": "j_li@example.com"
+        "email": "j_li@example.com",
+        "role": 3
     },
     {
         "username": "x_wang",
         "password": "password2",
         "name": "王小明",
-        "email": "x_wang@example.com"
+        "email": "x_wang@example.com",
+        "role": 2
     },
     {
         "username": "y_zhang",
         "password": "password3",
-        "name": "张燕"
+        "name": "张燕",
+        "role": 1
     },
     {
         "username": "q_zhao",
         "password": "password4",
         "name": "赵琪",
-        "email": "q_zhao@example.com"
+        "email": "q_zhao@example.com",
+        "role": 0
     },
     {
         "username": "f_chen",
         "password": "password5",
-        "name": "陈峰"
+        "name": "陈峰",
+        "role": -1
     },
     {
         "username": "s_wu",
         "password": "password6",
-        "name": "吴尚"
+        "name": "吴尚",
+        "role": -2
     }
 ]

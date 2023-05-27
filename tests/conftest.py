@@ -8,7 +8,7 @@ import pytest
 from flask import Flask
 from werkzeug.security import generate_password_hash
 
-from reservation_system import create_app, db
+from mrbs import create_app, db
 
 @pytest.fixture
 def app():

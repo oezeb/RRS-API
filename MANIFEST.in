@@ -1,4 +1,2 @@
-include reservation_system/schema.sql
-graft reservation_system/static
-graft reservation_system/templates
+include mrbs/db/schema.sql
 global-exclude *.pyc
