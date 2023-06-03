@@ -2,7 +2,7 @@ from marshmallow import fields
 
 from app.models import fields as _fields
 
-from . import Many, Schema
+from .util import Many, Schema
 
 
 class SettingSchema(Schema):

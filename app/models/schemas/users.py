@@ -3,7 +3,7 @@ from marshmallow import fields
 from app import db
 from app.models import fields as _fields
 
-from . import Label, Many, Schema
+from .util import Label, Many, Schema
 
 
 class UserSchema(Schema):

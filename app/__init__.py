@@ -1,4 +1,4 @@
-import os
+import os, secrets
 
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
@@ -13,7 +13,12 @@ def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
     CORS(app)
-    app.config.from_pyfile('config.py')
+    app.config.from_mapping(
+        SECRET_KEY=secrets.token_hex(),
+        DATABASE=os.environ.get('DATABASE'),
+        DB_USER=os.environ.get('DB_USER'),
+        DB_PASSWORD=os.environ.get('DB_PASSWORD'),
+    )
     app.url_map.strict_slashes = False
 
     if test_config is not None:

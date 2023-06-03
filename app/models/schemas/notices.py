@@ -1,6 +1,6 @@
 from marshmallow import fields
 
-from . import Many, Schema
+from .util import Many, Schema
 
 
 class NoticeSchema(Schema):

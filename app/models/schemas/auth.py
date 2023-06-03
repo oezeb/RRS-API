@@ -1,6 +1,6 @@
 from marshmallow import fields, validate
 
-from . import Schema
+from .util import Schema
 
 class LoginSchema(Schema):
     Authorization = fields.String(
