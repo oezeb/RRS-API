@@ -94,7 +94,7 @@ def init_data(cursor):
         (UserRole.ADMIN, '管理员')
     ])
 
-    sql = f"INSERT INTO {Setting.TABLE} (id, value, name) VALUES (%s, %s, %s, %s)"
+    sql = f"INSERT INTO {Setting.TABLE} (id, value, name) VALUES (%s, %s, %s)"
     cursor.executemany(sql, [
         (Setting.TIME_WINDOW, '72:00:00', '预约时间窗口'),
         (Setting.TIME_LIMIT, '03:00:00', '预约时长限制'),
