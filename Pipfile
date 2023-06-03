@@ -11,12 +11,12 @@ apispec = "*"
 apispec-webframeworks = "*"
 marshmallow = "*"
 webargs = "*"
-pytest = "*"
-coverage = "*"
 flask-cors = "*"
 mbrs-api = {editable = true, path = "."}
 
 [dev-packages]
+pytest = "*"
+coverage = "*"
 
 [requires]
 python_version = "3.9"

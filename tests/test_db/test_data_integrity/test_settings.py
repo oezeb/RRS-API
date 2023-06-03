@@ -12,7 +12,7 @@ must be a positive integer.
 """
 from mysql.connector import Error
 
-from mrbs import db
+from app import db
 
 def test_settings(app):
     with app.app_context():

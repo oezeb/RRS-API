@@ -10,7 +10,7 @@ to insert, delete or update user roles.
 """
 from mysql.connector import Error
 
-from mrbs import db
+from app import db
 
 def test_user_roles(app):
     with app.app_context():

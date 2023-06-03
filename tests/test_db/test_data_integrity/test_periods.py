@@ -10,7 +10,7 @@ The periods table has the following constraints:
 from datetime import timedelta
 from mysql.connector import Error
 
-from mrbs import db
+from app import db
 
 def test_periods(app):
     with app.app_context():

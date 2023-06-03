@@ -1,2 +1,2 @@
-include mrbs/db/schema.sql
+include app/db/schema.sql
 global-exclude *.pyc

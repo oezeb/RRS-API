@@ -2,8 +2,8 @@ from data import insert_data, get_users, get_rooms, get_periods, insert_resv
 from test_auth import auth_client
 from datetime import datetime, timedelta
 
-from mrbs import db
-from mrbs.user_api import util
+from app import db
+from app.user_api import util
 
 BASE_URL = "http://127.0.0.1:5000/api"
 

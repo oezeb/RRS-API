@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, time, date
 from mysql.connector import Error
 import random
 
-from mrbs import db
+from app import db
 
 logging.basicConfig(level=logging.DEBUG, filename=os.path.join(os.path.dirname(__file__), 'test.log'))
 logger = logging.getLogger(__name__)

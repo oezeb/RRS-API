@@ -5,7 +5,7 @@ import typing
 
 from werkzeug.security import generate_password_hash
 
-from mrbs import db
+from app import db
 
 path = os.path.dirname(__file__)
 

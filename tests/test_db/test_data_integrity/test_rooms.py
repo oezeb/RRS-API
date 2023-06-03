@@ -11,7 +11,7 @@ to insert, delete or update room status.
 """
 from mysql.connector import Error
 
-from mrbs import db
+from app import db
 
 def test_room_status(app):
     with app.app_context():

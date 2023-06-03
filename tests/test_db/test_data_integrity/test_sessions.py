@@ -7,7 +7,7 @@ The sessions table has the following constraints:
 """
 from mysql.connector import Error
 
-from mrbs import db
+from app import db
 
 def test_sessions(app):
     with app.app_context():

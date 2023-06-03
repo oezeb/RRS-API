@@ -1,6 +1,6 @@
 from datetime import datetime
 from data import insert_data
-from mrbs import db, util
+from app import db, util
 
 BASE_URL = 'http://127.0.0.1:5000/api'
 

@@ -1,4 +1,4 @@
-from mrbs import db
+from app import db
 from data import insert_data, get_users, get_room_types
 
 def test_select(app):

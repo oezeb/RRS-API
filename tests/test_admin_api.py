@@ -4,7 +4,7 @@ import os
 from data import *
 from test_auth import auth_client
 
-from mrbs import db
+from app import db
 
 BASE_URL = "http://127.0.0.1:5000/api/admin"
 
