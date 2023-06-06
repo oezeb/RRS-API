@@ -1,5 +1,4 @@
 import typing
-from datetime import datetime
 
 import click
 import mysql.connector
@@ -10,6 +9,7 @@ from .schema import init_schema
 def get_cnx():
     if 'cnx' not in g:
         g.cnx = mysql.connector.connect(
+            host    =current_app.config['DB_HOST'],
             database=current_app.config['DATABASE'],
             user    =current_app.config['DB_USER'],
             password=current_app.config['DB_PASSWORD']
@@ -28,23 +28,22 @@ def close_cnx(e=None):
 # ----------------------------------------------------------------
 
 @click.command('init-db')
-def init_db_command():
-    cnx = get_cnx(); cursor = cnx.cursor()
-
-    set_current_time_zone(cursor)
+@click.option('--user')
+@click.option('--password')
+def init_db_command(user=None, password=None):
+    if user is None or password is None:
+        cnx = get_cnx()
+    else:
+        cnx = mysql.connector.connect(
+            host    =current_app.config['DB_HOST'],
+            database=current_app.config['DATABASE'],
+            user    =user,
+            password=password
+        )
+    cursor = cnx.cursor()
     init_schema(cursor)
-    
     cnx.commit(); cursor.close()
     click.echo('Initialized the database.')
-
-def set_current_time_zone(cursor):
-    offset = datetime.now() - datetime.utcnow()
-    hours = offset.total_seconds() // 3600
-    minutes = (offset.total_seconds() % 3600) // 60
-    sign = '+' if hours >= 0 else '-'
-    offset = "%s%02d:%02d" % (sign, abs(hours), minutes)
-    cursor.execute(f"SET @@GLOBAL.time_zone = '{offset}';")
-    cursor.execute(f"SET @@SESSION.time_zone = '{offset}';")
 
 # ----------------------------------------------------------------
 # Database CRUD operations
