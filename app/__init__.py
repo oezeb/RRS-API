@@ -3,7 +3,7 @@ import os, secrets
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
 from apispec_webframeworks.flask import FlaskPlugin
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_cors import CORS
 
 from . import admin_api, api, auth, db, models, user_api, util
@@ -49,10 +49,26 @@ def create_app(test_config=None):
         json.dump(spec.to_dict(), f)
 
     # serve api docs
-    from flask import send_from_directory
     @app.route('/api/docs.json')
+    @auth.auth_required(role=db.UserRole.ADMIN)
     def docs():
+        """Serve api docs
+        ---
+        get:
+          summary: Serve api docs
+          description: Serve api docs
+          tags:
+            - Admin
+          responses:
+            200:
+              description: OK
+              content:
+                application/json:
+        """
         return send_from_directory(app.instance_path, 'docs.json')
+    
+    with app.test_request_context():
+        spec.path(view=docs)
 
     return app
 

@@ -1,5 +1,5 @@
-from app.db.db import *
-from app.db.schema import *
+from .db import *
+from .schema import *
 
 
 def init_app(app):
