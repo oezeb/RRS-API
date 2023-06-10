@@ -14,13 +14,14 @@ from app import create_app, db
 def app():
     app = create_app({
         'TESTING': True,
-        'DATABASE':"room_reservations",
-        'DB_USER':"test",
-        'DB_PASSWORD':"password",
+        'DB_HOST': os.environ.get('DB_HOST'),
+        'DATABASE': os.environ.get('DATABASE'),
+        'DB_USER': os.environ.get('DB_USER'),
+        'DB_PASSWORD': os.environ.get('DB_PASSWORD'),
     })
 
     with app.app_context():
-        db.init_db()
+        db.init_db.callback()
     yield app
 
 @pytest.fixture

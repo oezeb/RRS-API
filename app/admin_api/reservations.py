@@ -36,7 +36,7 @@ def get(**kwargs):
             application/json:
               schema: ManyReservationSchema
     """
-    return db.select(db.Reservation.TABLE, order_by=['start_time', 'end_time'], **kwargs)
+    return util.get_reservations(**kwargs)
 
 @bp.route('/', methods=['POST'])
 @auth_required(role=db.UserRole.ADMIN)
@@ -83,7 +83,7 @@ def post(time_slots, **kwargs):
           
     return {'resv_id': resv_id, 'username': kwargs['username']}, 201
 
-@bp.route('/<int:resv_id>', methods=['PATCH'])
+@bp.route('/<int:resv_id>/<string:username>', methods=['PATCH'])
 @auth_required(role=db.UserRole.ADMIN)
 @use_kwargs(schemas.AdminReservationsPatchPathSchema, location='path')
 @use_kwargs(schemas.AdminReservationsPatchBodySchema)
@@ -113,7 +113,7 @@ def patch(resv_id, **kwargs):
     db.update(db.Reservation.TABLE, data=kwargs, resv_id=resv_id, username=username)
     return '', 204
 
-@bp.route('/<int:resv_id>/<int:slot_id>', methods=['PATCH'])
+@bp.route('/<int:resv_id>/<string:username>/<int:slot_id>', methods=['PATCH'])
 @auth_required(role=db.UserRole.ADMIN)
 @use_kwargs(schemas.AdminReservationsSlotPatchPathSchema, location='path')
 @use_kwargs(schemas.AdminReservationsPatchBodySchema)

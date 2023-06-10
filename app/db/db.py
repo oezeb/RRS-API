@@ -30,7 +30,7 @@ def close_cnx(e=None):
 @click.command('init-db')
 @click.option('--user')
 @click.option('--password')
-def init_db_command(user=None, password=None):
+def init_db(user=None, password=None):
     if user is None or password is None:
         cnx = get_cnx()
     else:

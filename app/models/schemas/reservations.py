@@ -134,9 +134,11 @@ class AdminReservationsPatchBodySchema(Schema):
 
 class AdminReservationsPatchPathSchema(Schema):
     resv_id = fields.Int(required=True)
+    username = fields.Str(required=True)
 
 class AdminReservationsSlotPatchPathSchema(Schema):
     resv_id = fields.Int(required=True)
+    username = fields.Str(required=True)
     slot_id = fields.Int(required=True)
 
 # /api/admin/reservations/privacy

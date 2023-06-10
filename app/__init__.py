@@ -64,6 +64,8 @@ def create_app(test_config=None):
               description: OK
               content:
                 application/json:
+                  schema:
+                    type: object
         """
         return send_from_directory(app.instance_path, 'docs.json')
     
@@ -71,6 +73,5 @@ def create_app(test_config=None):
         spec.path(view=docs)
 
     return app
-
 
 __all__ = ['create_app', 'models', 'db', 'api', 'auth', 'user_api', 'admin_api', 'util']

@@ -136,7 +136,7 @@ CREATE TABLE rooms
    name                 VARCHAR(50)                    NOT NULL,
    capacity             INTEGER                        NOT NULL,
    type                 INTEGER                        NOT NULL,
-   image                LONGBLOB                               NULL,
+   image                LONGBLOB                           NULL,
    CONSTRAINT rooms_pk PRIMARY KEY (room_id),
    CONSTRAINT rooms_room_status_fk
    FOREIGN KEY (status) 
