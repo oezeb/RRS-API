@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="182mm" xmlns="http://www.w3.org/2000/svg" height="111mm" version="1.1" viewBox="0 0 690 423" xmlns:xlink="http://www.w3.org/1999/xlink">
+   <polyline fill="none" points="432,217 530,217" stroke="#800040" stroke-width="1"/>
+   <polygon fill="#800040" points="530,217 517,220 517,214" stroke="#800040" stroke-width="1" stroke-linejoin="miter"/>
+   <text x="480" y="212" fill="#000000" font-size="10" font-family="Microsoft Sans Serif" text-anchor="middle">user_resv_fk</text>
+   <polyline fill="none" points="339,266 339,323" stroke="#800040" stroke-width="1"/>
+   <polygon fill="#800040" points="339,323 336,310 342,310" stroke="#800040" stroke-width="1" stroke-linejoin="miter"/>
+   <text x="339" y="298" fill="#000000" font-size="10" font-family="Microsoft Sans Serif" text-anchor="middle">room_resv_fk</text>
+   <polyline fill="none" points="380,130 380,87" stroke="#800040" stroke-width="1"/>
+   <polygon fill="#800040" points="380,87 383,100 377,100" stroke="#800040" stroke-width="1" stroke-linejoin="miter"/>
+   <text x="380" y="112" fill="#000000" font-size="10" font-family="Microsoft Sans Serif" text-anchor="middle">resv_session_fk</text>
+   <polyline fill="none" points="179,198 250,198" stroke="#800040" stroke-width="1"/>
+   <polygon fill="#800040" points="250,198 237,201 237,195" stroke="#800040" stroke-width="1" stroke-linejoin="miter"/>
+   <text x="214" y="194" fill="#000000" font-size="10" font-family="Microsoft Sans Serif" text-anchor="middle">resv_slot_fk</text>
+   <polyline fill="none" points="604,306 604,259" stroke="#800040" stroke-width="1"/>
+   <polygon fill="#800040" points="604,259 607,273 601,273" stroke="#800040" stroke-width="1" stroke-linejoin="miter"/>
+   <text x="603" y="285" fill="#000000" font-size="10" font-family="Microsoft Sans Serif" text-anchor="middle">user_notice_fk</text>
+   <rect x="269" y="323" fill="#ffffff" width="0" height="0" stroke="none" stroke-width="0"/>
+   <defs>
+      <linearGradient id="Gradient1" x1="0%" x2="100%" y1="0%" y2="100%" gradientUnits="objectBoundingBox">
+         <stop offset="5%" stop-color="#ffffff"/>
+         <stop offset="95%" stop-color="#e9ca83"/>
+      </linearGradient>
+   </defs>
+   <rect x="269" y="323" fill="url(#Gradient1)" width="140" height="98" stroke="#808040" stroke-width="1"/>
+   <text x="339" y="334" fill="#000000" font-size="10" font-family="Arial" text-anchor="middle">Room</text>
+   <line x1="269" x2="409" y1="340" y2="340" stroke="#808040" stroke-width="1"/>
+   <text x="273" y="350" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">ID</text>
+   <text x="273" y="363" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Name</text>
+   <text x="273" y="376" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Capacity</text>
+   <text x="273" y="389" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Status</text>
+   <text x="273" y="402" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Type</text>
+   <text x="273" y="415" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Image</text>
+   <text x="322" y="350" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">integer</text>
+   <text x="322" y="363" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">varchar(50)</text>
+   <text x="322" y="376" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">integer</text>
+   <text x="322" y="389" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">integer</text>
+   <text x="322" y="402" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">integer</text>
+   <text x="322" y="415" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">long binary</text>
+   <text x="383" y="350" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">&lt;pk&gt;</text>
+   <rect x="530" y="174" fill="#ffffff" width="0" height="0" stroke="none" stroke-width="0"/>
+   <defs>
+      <linearGradient id="Gradient2" x1="0%" x2="100%" y1="0%" y2="100%" gradientUnits="objectBoundingBox">
+         <stop offset="5%" stop-color="#ffffff"/>
+         <stop offset="95%" stop-color="#e9ca83"/>
+      </linearGradient>
+   </defs>
+   <rect x="530" y="174" fill="url(#Gradient2)" width="157" height="85" stroke="#808040" stroke-width="1"/>
+   <text x="608" y="185" fill="#000000" font-size="10" font-family="Arial" text-anchor="middle">User</text>
+   <line x1="530" x2="687" y1="191" y2="191" stroke="#808040" stroke-width="1"/>
+   <text x="535" y="201" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">Usename</text>
+   <text x="535" y="214" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Password</text>
+   <text x="535" y="227" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Name</text>
+   <text x="535" y="240" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Role</text>
+   <text x="535" y="253" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">email</text>
+   <text x="587" y="201" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">varchar(50)</text>
+   <text x="587" y="214" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">varchar(1024)</text>
+   <text x="587" y="227" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">varchar(50)</text>
+   <text x="587" y="240" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">integer</text>
+   <text x="587" y="253" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">varchar(50)</text>
+   <text x="659" y="201" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">&lt;pk&gt;</text>
+   <rect x="306" y="2" fill="#ffffff" width="0" height="0" stroke="none" stroke-width="0"/>
+   <defs>
+      <linearGradient id="Gradient3" x1="0%" x2="100%" y1="0%" y2="100%" gradientUnits="objectBoundingBox">
+         <stop offset="5%" stop-color="#ffffff"/>
+         <stop offset="95%" stop-color="#e9ca83"/>
+      </linearGradient>
+   </defs>
+   <rect x="306" y="2" fill="url(#Gradient3)" width="148" height="85" stroke="#808040" stroke-width="1"/>
+   <text x="380" y="13" fill="#000000" font-size="10" font-family="Arial" text-anchor="middle">Session</text>
+   <line x1="306" x2="454" y1="19" y2="19" stroke="#808040" stroke-width="1"/>
+   <text x="310" y="29" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">ID</text>
+   <text x="310" y="42" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Name</text>
+   <text x="310" y="55" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Start Time</text>
+   <text x="310" y="68" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">End Time</text>
+   <text x="310" y="81" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Is Current</text>
+   <text x="368" y="29" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">integer</text>
+   <text x="368" y="42" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">varchar(50)</text>
+   <text x="368" y="55" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">timestamp</text>
+   <text x="368" y="68" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">timestamp</text>
+   <text x="368" y="81" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">smallint</text>
+   <text x="428" y="29" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">&lt;pk&gt;</text>
+   <rect x="534" y="85" fill="#ffffff" width="0" height="0" stroke="none" stroke-width="0"/>
+   <defs>
+      <linearGradient id="Gradient4" x1="0%" x2="100%" y1="0%" y2="100%" gradientUnits="objectBoundingBox">
+         <stop offset="5%" stop-color="#ffffff"/>
+         <stop offset="95%" stop-color="#e9ca83"/>
+      </linearGradient>
+   </defs>
+   <rect x="534" y="85" fill="url(#Gradient4)" width="128" height="59" stroke="#808040" stroke-width="1"/>
+   <text x="598" y="96" fill="#000000" font-size="10" font-family="Arial" text-anchor="middle">Period</text>
+   <line x1="534" x2="662" y1="102" y2="102" stroke="#808040" stroke-width="1"/>
+   <text x="539" y="112" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">ID</text>
+   <text x="539" y="125" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Start Time</text>
+   <text x="539" y="138" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">End Time</text>
+   <text x="597" y="112" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">integer</text>
+   <text x="597" y="125" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">time</text>
+   <text x="597" y="138" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">time</text>
+   <text x="638" y="112" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">&lt;pk&gt;</text>
+   <rect x="250" y="130" fill="#ffffff" width="0" height="0" stroke="none" stroke-width="0"/>
+   <defs>
+      <linearGradient id="Gradient5" x1="0%" x2="100%" y1="0%" y2="100%" gradientUnits="objectBoundingBox">
+         <stop offset="5%" stop-color="#ffffff"/>
+         <stop offset="95%" stop-color="#e9ca83"/>
+      </linearGradient>
+   </defs>
+   <rect x="250" y="130" fill="url(#Gradient5)" width="182" height="136" stroke="#808040" stroke-width="1"/>
+   <text x="341" y="141" fill="#000000" font-size="10" font-family="Arial" text-anchor="middle">Reservation</text>
+   <line x1="250" x2="432" y1="147" y2="147" stroke="#808040" stroke-width="1"/>
+   <text x="255" y="157" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">ID</text>
+   <text x="255" y="170" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">Usename</text>
+   <text x="255" y="183" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Session ID</text>
+   <text x="255" y="196" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Room ID</text>
+   <text x="255" y="209" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Title</text>
+   <text x="255" y="222" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Note</text>
+   <text x="255" y="235" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Privacy</text>
+   <text x="255" y="248" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Create Time</text>
+   <text x="255" y="261" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Update Time</text>
+   <text x="325" y="157" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">integer</text>
+   <text x="325" y="170" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">varchar(50)</text>
+   <text x="325" y="183" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">integer</text>
+   <text x="325" y="196" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">integer</text>
+   <text x="325" y="209" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">varchar(50)</text>
+   <text x="325" y="222" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">varchar(100)</text>
+   <text x="325" y="235" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">integer</text>
+   <text x="325" y="248" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">timestamp</text>
+   <text x="325" y="261" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">timestamp</text>
+   <text x="391" y="157" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">&lt;pk&gt;</text>
+   <text x="391" y="170" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">&lt;pk,fk1&gt;</text>
+   <text x="391" y="183" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">&lt;fk3&gt;</text>
+   <text x="391" y="196" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">&lt;fk2&gt;</text>
+   <rect x="2" y="152" fill="#ffffff" width="0" height="0" stroke="none" stroke-width="0"/>
+   <defs>
+      <linearGradient id="Gradient6" x1="0%" x2="100%" y1="0%" y2="100%" gradientUnits="objectBoundingBox">
+         <stop offset="5%" stop-color="#ffffff"/>
+         <stop offset="95%" stop-color="#e9ca83"/>
+      </linearGradient>
+   </defs>
+   <rect x="2" y="152" fill="url(#Gradient6)" width="177" height="101" stroke="#808040" stroke-width="1"/>
+   <text x="90" y="163" fill="#000000" font-size="10" font-family="Arial" text-anchor="middle">Time Slot</text>
+   <line x1="2" x2="179" y1="169" y2="169" stroke="#808040" stroke-width="1"/>
+   <text x="7" y="179" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">ID</text>
+   <text x="7" y="192" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">Usename</text>
+   <text x="7" y="205" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">Reservation ID</text>
+   <text x="7" y="218" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Start Time</text>
+   <text x="7" y="231" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">End Time</text>
+   <text x="7" y="244" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Status</text>
+   <text x="83" y="179" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">integer</text>
+   <text x="83" y="192" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">varchar(50)</text>
+   <text x="83" y="205" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">integer</text>
+   <text x="83" y="218" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">timestamp</text>
+   <text x="83" y="231" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">timestamp</text>
+   <text x="83" y="244" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">integer</text>
+   <text x="143" y="179" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">&lt;pk&gt;</text>
+   <text x="143" y="192" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">&lt;pk,fk&gt;</text>
+   <text x="143" y="205" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">&lt;pk,fk&gt;</text>
+   <rect x="116" y="36" fill="#ffffff" width="0" height="0" stroke="none" stroke-width="0"/>
+   <defs>
+      <linearGradient id="Gradient7" x1="0%" x2="100%" y1="0%" y2="100%" gradientUnits="objectBoundingBox">
+         <stop offset="5%" stop-color="#ffffff"/>
+         <stop offset="95%" stop-color="#e9ca83"/>
+      </linearGradient>
+   </defs>
+   <rect x="116" y="36" fill="url(#Gradient7)" width="158" height="72" stroke="#808040" stroke-width="1"/>
+   <text x="195" y="47" fill="#000000" font-size="10" font-family="Arial" text-anchor="middle">Settings</text>
+   <line x1="116" x2="274" y1="53" y2="53" stroke="#808040" stroke-width="1"/>
+   <text x="121" y="63" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">ID</text>
+   <text x="121" y="76" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Name</text>
+   <text x="121" y="89" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Value</text>
+   <text x="121" y="102" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Description</text>
+   <text x="181" y="63" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">integer</text>
+   <text x="181" y="76" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">varchar(50)</text>
+   <text x="181" y="89" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">varchar(255)</text>
+   <text x="181" y="102" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">varchar(200)</text>
+   <text x="247" y="63" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">&lt;pk&gt;</text>
+   <rect x="525" y="306" fill="#ffffff" width="0" height="0" stroke="none" stroke-width="0"/>
+   <defs>
+      <linearGradient id="Gradient8" x1="0%" x2="100%" y1="0%" y2="100%" gradientUnits="objectBoundingBox">
+         <stop offset="5%" stop-color="#ffffff"/>
+         <stop offset="95%" stop-color="#e9ca83"/>
+      </linearGradient>
+   </defs>
+   <rect x="525" y="306" fill="url(#Gradient8)" width="163" height="85" stroke="#808040" stroke-width="1"/>
+   <text x="606" y="317" fill="#000000" font-size="10" font-family="Arial" text-anchor="middle">Notice</text>
+   <line x1="525" x2="688" y1="323" y2="323" stroke="#808040" stroke-width="1"/>
+   <text x="529" y="333" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">ID</text>
+   <text x="529" y="346" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">Usename</text>
+   <text x="529" y="359" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Title</text>
+   <text x="529" y="372" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Content</text>
+   <text x="529" y="385" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">Create Time</text>
+   <text x="596" y="333" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">integer</text>
+   <text x="596" y="346" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">varchar(50)</text>
+   <text x="596" y="359" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">varchar(50)</text>
+   <text x="596" y="372" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">long varchar</text>
+   <text x="596" y="385" fill="#000000" font-size="10" font-family="Arial" text-anchor="start">timestamp</text>
+   <text x="662" y="333" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">&lt;pk&gt;</text>
+   <text x="662" y="346" fill="#000000" font-size="10" font-family="Arial" text-anchor="start" text-decoration="underline">&lt;pk,f</text>
+</svg>
