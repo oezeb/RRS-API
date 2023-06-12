@@ -8,12 +8,19 @@ from .schema import init_schema
 
 def get_cnx():
     if 'cnx' not in g:
-        g.cnx = mysql.connector.connect(
-            host    =current_app.config['DB_HOST'],
-            database=current_app.config['DATABASE'],
-            user    =current_app.config['DB_USER'],
-            password=current_app.config['DB_PASSWORD']
-        )
+        kwargs = {
+            'database' : current_app.config['DATABASE'],
+            'user'     : current_app.config['DB_USER'],
+            'password' : current_app.config['DB_PASSWORD'],
+        }
+        host = current_app.config['DB_HOST']
+        port = current_app.config['DB_PORT']
+        if host is not None:
+            kwargs['host'] = host
+        if port is not None:
+            kwargs['port'] = port
+
+        g.cnx = mysql.connector.connect(**kwargs)
         
     return g.cnx
 
@@ -28,8 +35,8 @@ def close_cnx(e=None):
 # ----------------------------------------------------------------
 
 @click.command('init-db')
-@click.option('--user')
-@click.option('--password')
+@click.option('--user', default=None, help='user used to init the database. Defaults to the value of $DB_USER environment variable')
+@click.option('--password', default=None, help='user\'s password. Defaults to the value of $DB_PASSWORD environment variable')
 def init_db(user=None, password=None):
     if user is None or password is None:
         cnx = get_cnx()
