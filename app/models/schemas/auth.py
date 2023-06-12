@@ -16,4 +16,4 @@ class RegisterSchema(Schema):
     username = fields.Str(required=True)
     password = fields.Str(required=True)
     name = fields.Str(required=True)
-    email = fields.Email()
+    email = fields.Str()
