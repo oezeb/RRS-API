@@ -88,7 +88,7 @@ def init_data(cursor):
     cursor.executemany(sql, [
         (UserRole.INACTIVE, '未激活'),
         (UserRole.RESTRICTED, '受限用户'),
-        (UserRole.GUEST, '来宾'),
+        (UserRole.GUEST, '访客'),
         (UserRole.BASIC, '基础用户'),
         (UserRole.ADVANCED, '高级用户'),
         (UserRole.ADMIN, '管理员')
